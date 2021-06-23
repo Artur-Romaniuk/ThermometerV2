@@ -1,4 +1,4 @@
-ARM GAS  /tmp/ccTqHLFx.s 			page 1
+ARM GAS  /tmp/ccnQlOiU.s 			page 1
 
 
    1              		.cpu cortex-m4
@@ -26,7 +26,7 @@ ARM GAS  /tmp/ccTqHLFx.s 			page 1
   23              		.fpu fpv4-sp-d16
   25              	micro_delay:
   26              	.LVL0:
-  27              	.LFB135:
+  27              	.LFB140:
   28              		.file 1 "Core/Src/DS18B20.c"
    1:Core/Src/DS18B20.c **** /*
    2:Core/Src/DS18B20.c ****  * DS18B20.c
@@ -37,174 +37,249 @@ ARM GAS  /tmp/ccTqHLFx.s 			page 1
    7:Core/Src/DS18B20.c **** 
    8:Core/Src/DS18B20.c **** #include "DS18B20.h"
    9:Core/Src/DS18B20.c **** 
-  10:Core/Src/DS18B20.c **** volatile int DS18B20_state = 0;
-  11:Core/Src/DS18B20.c **** 
-  12:Core/Src/DS18B20.c **** //static functions declarations//////////////
-  13:Core/Src/DS18B20.c **** static void micro_delay(uint16_t delay);
-  14:Core/Src/DS18B20.c **** static void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
-  15:Core/Src/DS18B20.c **** static void Set_Pin_Input(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
-  16:Core/Src/DS18B20.c **** static void Set_Pin_Output_Defualt();
-  17:Core/Src/DS18B20.c **** static void Set_Pin_Input_Defualt();
-  18:Core/Src/DS18B20.c **** 
-  19:Core/Src/DS18B20.c **** //functions/////////////////////////////
-  20:Core/Src/DS18B20.c **** 
-  21:Core/Src/DS18B20.c **** int DS18B20_Initialize() {
-  22:Core/Src/DS18B20.c **** 	uint8_t response;
-  23:Core/Src/DS18B20.c **** 	Set_Pin_Output_Defualt();
-  24:Core/Src/DS18B20.c **** 	HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
-  25:Core/Src/DS18B20.c **** 	micro_delay(480); //datasheet
-  26:Core/Src/DS18B20.c **** 	Set_Pin_Input_Defualt();
-  27:Core/Src/DS18B20.c **** 	micro_delay(100); //datasheet
-  28:Core/Src/DS18B20.c **** 	if (!HAL_GPIO_ReadPin(DS18B20_Port, DS18B20_Pin)) {
-  29:Core/Src/DS18B20.c **** 		response = 0; //correct
-  30:Core/Src/DS18B20.c **** 	} else {
-ARM GAS  /tmp/ccTqHLFx.s 			page 2
+  10:Core/Src/DS18B20.c **** //static variables////////////////////
+  11:Core/Src/DS18B20.c **** static int DS18B20_state = 0;
+  12:Core/Src/DS18B20.c **** static uint16_t temperature = 0;
+  13:Core/Src/DS18B20.c **** 
+  14:Core/Src/DS18B20.c **** //static functions declarations//////////////
+  15:Core/Src/DS18B20.c **** static int Read_Temperature_State_Machine_Controler();
+  16:Core/Src/DS18B20.c **** static int Read_Temperature_Stage_0();
+  17:Core/Src/DS18B20.c **** static void Read_Temperature_Stage_1();
+  18:Core/Src/DS18B20.c **** static int Read_Temperature_Stage_2();
+  19:Core/Src/DS18B20.c **** static void Read_Temperature_Stage_3();
+  20:Core/Src/DS18B20.c **** static void micro_delay(uint16_t delay);
+  21:Core/Src/DS18B20.c **** static void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
+  22:Core/Src/DS18B20.c **** static void Set_Pin_Input(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
+  23:Core/Src/DS18B20.c **** static void Set_Pin_Output_Defualt();
+  24:Core/Src/DS18B20.c **** static void Set_Pin_Input_Defualt();
+  25:Core/Src/DS18B20.c **** 
+  26:Core/Src/DS18B20.c **** //functions/////////////////////////////
+  27:Core/Src/DS18B20.c **** 
+  28:Core/Src/DS18B20.c **** int DS18B20_Initialize()
+  29:Core/Src/DS18B20.c **** {
+  30:Core/Src/DS18B20.c **** 	uint8_t response;
+ARM GAS  /tmp/ccnQlOiU.s 			page 2
 
 
-  31:Core/Src/DS18B20.c **** 		response = 1; //empty line, error
-  32:Core/Src/DS18B20.c **** 	}
-  33:Core/Src/DS18B20.c **** 	micro_delay(380);
-  34:Core/Src/DS18B20.c **** 	return response;
-  35:Core/Src/DS18B20.c **** }
-  36:Core/Src/DS18B20.c **** 
-  37:Core/Src/DS18B20.c **** float DS18B20_Read_Temperature() {
-  38:Core/Src/DS18B20.c **** 	if (DS18B20_Initialize()) {
-  39:Core/Src/DS18B20.c **** 		return 0xffff; //error, no response from Thermometer
-  40:Core/Src/DS18B20.c **** 	} else {
-  41:Core/Src/DS18B20.c **** 		HAL_Delay(1);				//BLOCKING!
-  42:Core/Src/DS18B20.c **** 		DS18B20_Write_Byte(SKIP_ROM);	//Single device connected
-  43:Core/Src/DS18B20.c **** 		DS18B20_Write_Byte(CONVERT_T);	//Start temperature conversion
-  44:Core/Src/DS18B20.c **** 
-  45:Core/Src/DS18B20.c **** 		HAL_Delay(800);				//BLOCKING! Gives time for temp conversion
-  46:Core/Src/DS18B20.c **** 
-  47:Core/Src/DS18B20.c **** 		if (DS18B20_Initialize()) {
-  48:Core/Src/DS18B20.c **** 			return 0xffff; //error, device didn't respond
-  49:Core/Src/DS18B20.c **** 		} else {
-  50:Core/Src/DS18B20.c **** 			HAL_Delay(1);			//BLOCKING! Waits for voltage to normalize
-  51:Core/Src/DS18B20.c **** 			DS18B20_Write_Byte(SKIP_ROM); //Single device connected
-  52:Core/Src/DS18B20.c **** 			DS18B20_Write_Byte(READ_SCRATCHPAD); //Get temperature from the device
-  53:Core/Src/DS18B20.c **** 			uint8_t tmp1 = DS18B20_Read_Byte();
-  54:Core/Src/DS18B20.c **** 			uint8_t tmp2 = DS18B20_Read_Byte();
-  55:Core/Src/DS18B20.c **** 			uint16_t temperature = tmp1 | (tmp2 << 8);
-  56:Core/Src/DS18B20.c **** 			return (float) temperature / 16;	//return float
-  57:Core/Src/DS18B20.c **** 		}
-  58:Core/Src/DS18B20.c **** 
-  59:Core/Src/DS18B20.c **** 	}
-  60:Core/Src/DS18B20.c **** }
+  31:Core/Src/DS18B20.c **** 	Set_Pin_Output_Defualt();
+  32:Core/Src/DS18B20.c **** 	HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
+  33:Core/Src/DS18B20.c **** 	micro_delay(480); //datasheet
+  34:Core/Src/DS18B20.c **** 	Set_Pin_Input_Defualt();
+  35:Core/Src/DS18B20.c **** 	micro_delay(100); //datasheet
+  36:Core/Src/DS18B20.c **** 	if (!HAL_GPIO_ReadPin(DS18B20_Port, DS18B20_Pin))
+  37:Core/Src/DS18B20.c **** 	{
+  38:Core/Src/DS18B20.c **** 		response = 0; //correct
+  39:Core/Src/DS18B20.c **** 	}
+  40:Core/Src/DS18B20.c **** 	else
+  41:Core/Src/DS18B20.c **** 	{
+  42:Core/Src/DS18B20.c **** 		response = 1; //empty line, error
+  43:Core/Src/DS18B20.c **** 	}
+  44:Core/Src/DS18B20.c **** 	micro_delay(380);
+  45:Core/Src/DS18B20.c **** 	return response;
+  46:Core/Src/DS18B20.c **** }
+  47:Core/Src/DS18B20.c **** 
+  48:Core/Src/DS18B20.c **** float DS18B20_Read_Temperature()
+  49:Core/Src/DS18B20.c **** {
+  50:Core/Src/DS18B20.c **** 	if (DS18B20_Initialize())
+  51:Core/Src/DS18B20.c **** 	{
+  52:Core/Src/DS18B20.c **** 		return 0xffff; //error, no response from Thermometer
+  53:Core/Src/DS18B20.c **** 	}
+  54:Core/Src/DS18B20.c **** 	else
+  55:Core/Src/DS18B20.c **** 	{
+  56:Core/Src/DS18B20.c **** 		HAL_Delay(1);				   //BLOCKING!
+  57:Core/Src/DS18B20.c **** 		DS18B20_Write_Byte(SKIP_ROM);  //Single device connected
+  58:Core/Src/DS18B20.c **** 		DS18B20_Write_Byte(CONVERT_T); //Start temperature conversion
+  59:Core/Src/DS18B20.c **** 
+  60:Core/Src/DS18B20.c **** 		HAL_Delay(800); //BLOCKING! Gives time for temp conversion
   61:Core/Src/DS18B20.c **** 
-  62:Core/Src/DS18B20.c **** float DS18B20_Read_Temperature_NB() {
-  63:Core/Src/DS18B20.c **** 	uint8_t tmp1 ;
-  64:Core/Src/DS18B20.c **** 	uint8_t tmp2 ;
-  65:Core/Src/DS18B20.c **** 	uint16_t temperature;
-  66:Core/Src/DS18B20.c **** 
-  67:Core/Src/DS18B20.c **** 
-  68:Core/Src/DS18B20.c **** 	switch (DS18B20_state) {
-  69:Core/Src/DS18B20.c **** 	case 0:
-  70:Core/Src/DS18B20.c **** 		if (DS18B20_Initialize()) {
-  71:Core/Src/DS18B20.c **** 			return 0xffff; //error, no response from Thermometer
-  72:Core/Src/DS18B20.c **** 		} else {
-  73:Core/Src/DS18B20.c **** 			__HAL_TIM_SET_COUNTER(&htim7, 0xffff - 1000);
-  74:Core/Src/DS18B20.c **** 		}
-  75:Core/Src/DS18B20.c **** 		break;
-  76:Core/Src/DS18B20.c **** 	case 1:
-  77:Core/Src/DS18B20.c **** 		DS18B20_Write_Byte(SKIP_ROM);	//Single device connected
-  78:Core/Src/DS18B20.c **** 		DS18B20_Write_Byte(CONVERT_T);	//Start temperature conversion
-  79:Core/Src/DS18B20.c **** 		__HAL_TIM_SET_COUNTER(&htim7, 0xffff - 8000);
-  80:Core/Src/DS18B20.c **** 		break;
-  81:Core/Src/DS18B20.c **** 	case 2:
-  82:Core/Src/DS18B20.c **** 		if (DS18B20_Initialize()) {
-  83:Core/Src/DS18B20.c **** 			return 0xffff; //error, device didn't respond
-  84:Core/Src/DS18B20.c **** 		} else {
-  85:Core/Src/DS18B20.c **** 			__HAL_TIM_SET_COUNTER(&htim7, 0xffff - 1000);
-  86:Core/Src/DS18B20.c **** 		}
-  87:Core/Src/DS18B20.c **** 		break;
-ARM GAS  /tmp/ccTqHLFx.s 			page 3
+  62:Core/Src/DS18B20.c **** 		if (DS18B20_Initialize())
+  63:Core/Src/DS18B20.c **** 		{
+  64:Core/Src/DS18B20.c **** 			return 0xffff; //error, device didn't respond
+  65:Core/Src/DS18B20.c **** 		}
+  66:Core/Src/DS18B20.c **** 		else
+  67:Core/Src/DS18B20.c **** 		{
+  68:Core/Src/DS18B20.c **** 			HAL_Delay(1);						 //BLOCKING! Waits for voltage to normalize
+  69:Core/Src/DS18B20.c **** 			DS18B20_Write_Byte(SKIP_ROM);		 //Single device connected
+  70:Core/Src/DS18B20.c **** 			DS18B20_Write_Byte(READ_SCRATCHPAD); //Get temperature from the device
+  71:Core/Src/DS18B20.c **** 			uint8_t tmp1 = DS18B20_Read_Byte();
+  72:Core/Src/DS18B20.c **** 			uint8_t tmp2 = DS18B20_Read_Byte();
+  73:Core/Src/DS18B20.c **** 			uint16_t temperature = tmp1 | (tmp2 << 8);
+  74:Core/Src/DS18B20.c **** 			return (float)temperature / 16; //return float
+  75:Core/Src/DS18B20.c **** 		}
+  76:Core/Src/DS18B20.c **** 	}
+  77:Core/Src/DS18B20.c **** }
+  78:Core/Src/DS18B20.c **** 
+  79:Core/Src/DS18B20.c **** float DS18B20_Read_Temperature_NB()
+  80:Core/Src/DS18B20.c **** {
+  81:Core/Src/DS18B20.c **** 	if (Read_Temperature_State_Machine_Controler())
+  82:Core/Src/DS18B20.c **** 	{
+  83:Core/Src/DS18B20.c **** 		return 0xffff; //ERROR
+  84:Core/Src/DS18B20.c **** 	}
+  85:Core/Src/DS18B20.c **** 	return (float)temperature / 16;
+  86:Core/Src/DS18B20.c **** }
+  87:Core/Src/DS18B20.c **** 
+ARM GAS  /tmp/ccnQlOiU.s 			page 3
 
 
-  88:Core/Src/DS18B20.c **** 	case 3:
-  89:Core/Src/DS18B20.c **** 		DS18B20_Write_Byte(SKIP_ROM); //Single device connected
-  90:Core/Src/DS18B20.c **** 		DS18B20_Write_Byte(READ_SCRATCHPAD); //Get temperature from the device
-  91:Core/Src/DS18B20.c **** 		tmp1 = DS18B20_Read_Byte();
-  92:Core/Src/DS18B20.c **** 		tmp2 = DS18B20_Read_Byte();
-  93:Core/Src/DS18B20.c **** 		temperature = tmp1 | (tmp2 << 8);
-  94:Core/Src/DS18B20.c **** 		return (float) temperature / 16;	//return float
-  95:Core/Src/DS18B20.c **** 	default:
-  96:Core/Src/DS18B20.c **** 		DS18B20_state=0;
-  97:Core/Src/DS18B20.c **** 		break;
-  98:Core/Src/DS18B20.c **** 	}
-  99:Core/Src/DS18B20.c **** 
- 100:Core/Src/DS18B20.c **** }
- 101:Core/Src/DS18B20.c **** 
- 102:Core/Src/DS18B20.c **** void DS18B20_Write_Byte(uint8_t byte) {
- 103:Core/Src/DS18B20.c **** 	for (int i = 0; i < 8; i++) {
- 104:Core/Src/DS18B20.c **** 		if ((byte & (1 << i)) != 0) {
- 105:Core/Src/DS18B20.c **** 			Set_Pin_Output_Defualt();
- 106:Core/Src/DS18B20.c **** 			HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
- 107:Core/Src/DS18B20.c **** 			micro_delay(1);
- 108:Core/Src/DS18B20.c **** 			Set_Pin_Input_Defualt();
- 109:Core/Src/DS18B20.c **** 			micro_delay(60);
- 110:Core/Src/DS18B20.c **** 		} else {
- 111:Core/Src/DS18B20.c **** 			Set_Pin_Output_Defualt();
- 112:Core/Src/DS18B20.c **** 			HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
- 113:Core/Src/DS18B20.c **** 			micro_delay(60);
- 114:Core/Src/DS18B20.c **** 			Set_Pin_Input_Defualt();
- 115:Core/Src/DS18B20.c **** 		}
- 116:Core/Src/DS18B20.c **** 	}
- 117:Core/Src/DS18B20.c **** }
- 118:Core/Src/DS18B20.c **** 
- 119:Core/Src/DS18B20.c **** uint8_t DS18B20_Read_Byte() {
- 120:Core/Src/DS18B20.c **** 	uint8_t byte = 0;
- 121:Core/Src/DS18B20.c **** 	Set_Pin_Input_Defualt();
- 122:Core/Src/DS18B20.c **** 	for (int i = 0; i < 8; i++) {
- 123:Core/Src/DS18B20.c **** 		Set_Pin_Output_Defualt();
- 124:Core/Src/DS18B20.c **** 		HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
- 125:Core/Src/DS18B20.c **** 		micro_delay(2);
- 126:Core/Src/DS18B20.c **** 		Set_Pin_Input_Defualt();
- 127:Core/Src/DS18B20.c **** 		micro_delay(10);
- 128:Core/Src/DS18B20.c **** 		if (HAL_GPIO_ReadPin(DS18B20_Port, DS18B20_Pin)) {
- 129:Core/Src/DS18B20.c **** 			byte |= 1 << i;
- 130:Core/Src/DS18B20.c **** 		}
- 131:Core/Src/DS18B20.c **** 		micro_delay(50);
- 132:Core/Src/DS18B20.c **** 	}
- 133:Core/Src/DS18B20.c **** 	return byte;
- 134:Core/Src/DS18B20.c **** }
- 135:Core/Src/DS18B20.c **** 
- 136:Core/Src/DS18B20.c **** //static functions///////////////////////////
- 137:Core/Src/DS18B20.c **** 
- 138:Core/Src/DS18B20.c **** static void micro_delay(uint16_t delay) {
-  29              		.loc 1 138 41 view -0
+  88:Core/Src/DS18B20.c **** void DS18B20_Write_Byte(uint8_t byte)
+  89:Core/Src/DS18B20.c **** {
+  90:Core/Src/DS18B20.c **** 	for (int i = 0; i < 8; i++)
+  91:Core/Src/DS18B20.c **** 	{
+  92:Core/Src/DS18B20.c **** 		if ((byte & (1 << i)) != 0)
+  93:Core/Src/DS18B20.c **** 		{
+  94:Core/Src/DS18B20.c **** 			Set_Pin_Output_Defualt();
+  95:Core/Src/DS18B20.c **** 			HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
+  96:Core/Src/DS18B20.c **** 			micro_delay(1);
+  97:Core/Src/DS18B20.c **** 			Set_Pin_Input_Defualt();
+  98:Core/Src/DS18B20.c **** 			micro_delay(60);
+  99:Core/Src/DS18B20.c **** 		}
+ 100:Core/Src/DS18B20.c **** 		else
+ 101:Core/Src/DS18B20.c **** 		{
+ 102:Core/Src/DS18B20.c **** 			Set_Pin_Output_Defualt();
+ 103:Core/Src/DS18B20.c **** 			HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
+ 104:Core/Src/DS18B20.c **** 			micro_delay(60);
+ 105:Core/Src/DS18B20.c **** 			Set_Pin_Input_Defualt();
+ 106:Core/Src/DS18B20.c **** 		}
+ 107:Core/Src/DS18B20.c **** 	}
+ 108:Core/Src/DS18B20.c **** }
+ 109:Core/Src/DS18B20.c **** 
+ 110:Core/Src/DS18B20.c **** uint8_t DS18B20_Read_Byte()
+ 111:Core/Src/DS18B20.c **** {
+ 112:Core/Src/DS18B20.c **** 	uint8_t byte = 0;
+ 113:Core/Src/DS18B20.c **** 	Set_Pin_Input_Defualt();
+ 114:Core/Src/DS18B20.c **** 	for (int i = 0; i < 8; i++)
+ 115:Core/Src/DS18B20.c **** 	{
+ 116:Core/Src/DS18B20.c **** 		Set_Pin_Output_Defualt();
+ 117:Core/Src/DS18B20.c **** 		HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
+ 118:Core/Src/DS18B20.c **** 		micro_delay(2);
+ 119:Core/Src/DS18B20.c **** 		Set_Pin_Input_Defualt();
+ 120:Core/Src/DS18B20.c **** 		micro_delay(10);
+ 121:Core/Src/DS18B20.c **** 		if (HAL_GPIO_ReadPin(DS18B20_Port, DS18B20_Pin))
+ 122:Core/Src/DS18B20.c **** 		{
+ 123:Core/Src/DS18B20.c **** 			byte |= 1 << i;
+ 124:Core/Src/DS18B20.c **** 		}
+ 125:Core/Src/DS18B20.c **** 		micro_delay(50);
+ 126:Core/Src/DS18B20.c **** 	}
+ 127:Core/Src/DS18B20.c **** 	return byte;
+ 128:Core/Src/DS18B20.c **** }
+ 129:Core/Src/DS18B20.c **** 
+ 130:Core/Src/DS18B20.c **** //static functions///////////////////////////
+ 131:Core/Src/DS18B20.c **** 
+ 132:Core/Src/DS18B20.c **** static int Read_Temperature_State_Machine_Controler()
+ 133:Core/Src/DS18B20.c **** {
+ 134:Core/Src/DS18B20.c **** 	switch (DS18B20_state)
+ 135:Core/Src/DS18B20.c **** 	{
+ 136:Core/Src/DS18B20.c **** 	case 0:
+ 137:Core/Src/DS18B20.c **** 		if (Read_Temperature_Stage_0())
+ 138:Core/Src/DS18B20.c **** 		{
+ 139:Core/Src/DS18B20.c **** 			return 1; //ERROR
+ 140:Core/Src/DS18B20.c **** 		}
+ 141:Core/Src/DS18B20.c **** 		__HAL_TIM_SetCounter(&htim7, 0);
+ 142:Core/Src/DS18B20.c **** 		DS18B20_state++;
+ 143:Core/Src/DS18B20.c **** 		break;
+ 144:Core/Src/DS18B20.c **** 	case 1:
+ARM GAS  /tmp/ccnQlOiU.s 			page 4
+
+
+ 145:Core/Src/DS18B20.c **** 		if (__HAL_TIM_GetCounter(&htim7) < 1000)
+ 146:Core/Src/DS18B20.c **** 		{
+ 147:Core/Src/DS18B20.c **** 			break;
+ 148:Core/Src/DS18B20.c **** 		}
+ 149:Core/Src/DS18B20.c **** 		Read_Temperature_Stage_1();
+ 150:Core/Src/DS18B20.c **** 		__HAL_TIM_SetCounter(&htim7, 0);
+ 151:Core/Src/DS18B20.c **** 		DS18B20_state++;
+ 152:Core/Src/DS18B20.c **** 		break;
+ 153:Core/Src/DS18B20.c **** 	case 2:
+ 154:Core/Src/DS18B20.c **** 		if (__HAL_TIM_GetCounter(&htim7) < 8000)
+ 155:Core/Src/DS18B20.c **** 		{
+ 156:Core/Src/DS18B20.c **** 			break;
+ 157:Core/Src/DS18B20.c **** 		}
+ 158:Core/Src/DS18B20.c **** 		if (Read_Temperature_Stage_2())
+ 159:Core/Src/DS18B20.c **** 		{
+ 160:Core/Src/DS18B20.c **** 			return 1; //ERROR
+ 161:Core/Src/DS18B20.c **** 		}
+ 162:Core/Src/DS18B20.c **** 		__HAL_TIM_SetCounter(&htim7, 0);
+ 163:Core/Src/DS18B20.c **** 		DS18B20_state++;
+ 164:Core/Src/DS18B20.c **** 		break;
+ 165:Core/Src/DS18B20.c **** 	case 3:
+ 166:Core/Src/DS18B20.c **** 		if (__HAL_TIM_GetCounter(&htim7) < 1000)
+ 167:Core/Src/DS18B20.c **** 		{
+ 168:Core/Src/DS18B20.c **** 			break;
+ 169:Core/Src/DS18B20.c **** 		}
+ 170:Core/Src/DS18B20.c **** 		Read_Temperature_Stage_3();
+ 171:Core/Src/DS18B20.c **** 		DS18B20_state = 0;
+ 172:Core/Src/DS18B20.c **** 		break;
+ 173:Core/Src/DS18B20.c **** 	}
+ 174:Core/Src/DS18B20.c **** 	return 0;
+ 175:Core/Src/DS18B20.c **** }
+ 176:Core/Src/DS18B20.c **** 
+ 177:Core/Src/DS18B20.c **** static int Read_Temperature_Stage_0()
+ 178:Core/Src/DS18B20.c **** {
+ 179:Core/Src/DS18B20.c **** 	if (DS18B20_Initialize())
+ 180:Core/Src/DS18B20.c **** 	{
+ 181:Core/Src/DS18B20.c **** 		return 1; //error, no response from Thermometer
+ 182:Core/Src/DS18B20.c **** 	}
+ 183:Core/Src/DS18B20.c **** 	return 0;
+ 184:Core/Src/DS18B20.c **** }
+ 185:Core/Src/DS18B20.c **** static void Read_Temperature_Stage_1()
+ 186:Core/Src/DS18B20.c **** {
+ 187:Core/Src/DS18B20.c **** 	DS18B20_Write_Byte(SKIP_ROM);  //Single device connected
+ 188:Core/Src/DS18B20.c **** 	DS18B20_Write_Byte(CONVERT_T); //Start temperature conversion
+ 189:Core/Src/DS18B20.c **** }
+ 190:Core/Src/DS18B20.c **** static int Read_Temperature_Stage_2()
+ 191:Core/Src/DS18B20.c **** {
+ 192:Core/Src/DS18B20.c **** 	if (DS18B20_Initialize())
+ 193:Core/Src/DS18B20.c **** 	{
+ 194:Core/Src/DS18B20.c **** 		return 1; //error, device didn't respond
+ 195:Core/Src/DS18B20.c **** 	}
+ 196:Core/Src/DS18B20.c **** 	return 0;
+ 197:Core/Src/DS18B20.c **** }
+ 198:Core/Src/DS18B20.c **** static void Read_Temperature_Stage_3()
+ 199:Core/Src/DS18B20.c **** {
+ 200:Core/Src/DS18B20.c **** 	uint8_t tmp1;
+ 201:Core/Src/DS18B20.c **** 	uint8_t tmp2;
+ARM GAS  /tmp/ccnQlOiU.s 			page 5
+
+
+ 202:Core/Src/DS18B20.c **** 	DS18B20_Write_Byte(SKIP_ROM);		 //Single device connected
+ 203:Core/Src/DS18B20.c **** 	DS18B20_Write_Byte(READ_SCRATCHPAD); //Get temperature from the device
+ 204:Core/Src/DS18B20.c **** 	tmp1 = DS18B20_Read_Byte();
+ 205:Core/Src/DS18B20.c **** 	tmp2 = DS18B20_Read_Byte();
+ 206:Core/Src/DS18B20.c **** 	temperature = (tmp1 | (tmp2 << 8));
+ 207:Core/Src/DS18B20.c **** }
+ 208:Core/Src/DS18B20.c **** 
+ 209:Core/Src/DS18B20.c **** static void micro_delay(uint16_t delay)
+ 210:Core/Src/DS18B20.c **** {
+  29              		.loc 1 210 1 view -0
   30              		.cfi_startproc
   31              		@ args = 0, pretend = 0, frame = 0
   32              		@ frame_needed = 0, uses_anonymous_args = 0
   33              		@ link register save eliminated.
- 139:Core/Src/DS18B20.c **** 	__HAL_TIM_SET_COUNTER(&htim6, 0);
-ARM GAS  /tmp/ccTqHLFx.s 			page 4
-
-
-  34              		.loc 1 139 2 view .LVU1
+ 211:Core/Src/DS18B20.c **** 	__HAL_TIM_SET_COUNTER(&htim6, 0);
+  34              		.loc 1 211 2 view .LVU1
   35 0000 034B     		ldr	r3, .L3
   36 0002 1A68     		ldr	r2, [r3]
   37 0004 0023     		movs	r3, #0
   38 0006 5362     		str	r3, [r2, #36]
- 140:Core/Src/DS18B20.c **** 	while ((__HAL_TIM_GET_COUNTER(&htim6)) < delay)
-  39              		.loc 1 140 2 view .LVU2
+ 212:Core/Src/DS18B20.c **** 	while ((__HAL_TIM_GET_COUNTER(&htim6)) < delay)
+  39              		.loc 1 212 2 view .LVU2
   40              	.L2:
-  41              		.loc 1 140 41 discriminator 1 view .LVU3
-  42              		.loc 1 140 10 is_stmt 0 discriminator 1 view .LVU4
+  41              		.loc 1 212 41 discriminator 1 view .LVU3
+  42              		.loc 1 212 10 is_stmt 0 discriminator 1 view .LVU4
   43 0008 536A     		ldr	r3, [r2, #36]
-  44              		.loc 1 140 41 discriminator 1 view .LVU5
+  44              		.loc 1 212 41 discriminator 1 view .LVU5
   45 000a 8342     		cmp	r3, r0
   46 000c FCD3     		bcc	.L2
- 141:Core/Src/DS18B20.c **** 		;
- 142:Core/Src/DS18B20.c **** }
-  47              		.loc 1 142 1 view .LVU6
+ 213:Core/Src/DS18B20.c **** 		;
+ 214:Core/Src/DS18B20.c **** }
+  47              		.loc 1 214 1 view .LVU6
   48 000e 7047     		bx	lr
   49              	.L4:
   50              		.align	2
   51              	.L3:
   52 0010 00000000 		.word	htim6
   53              		.cfi_endproc
-  54              	.LFE135:
+  54              	.LFE140:
   56              		.section	.text.Set_Pin_Output,"ax",%progbits
   57              		.align	1
   58              		.syntax unified
@@ -213,60 +288,61 @@ ARM GAS  /tmp/ccTqHLFx.s 			page 1
   61              		.fpu fpv4-sp-d16
   63              	Set_Pin_Output:
   64              	.LVL1:
-  65              	.LFB136:
- 143:Core/Src/DS18B20.c **** 
- 144:Core/Src/DS18B20.c **** static void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin) {
-  66              		.loc 1 144 68 is_stmt 1 view -0
+  65              	.LFB141:
+ 215:Core/Src/DS18B20.c **** 
+ 216:Core/Src/DS18B20.c **** static void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
+ 217:Core/Src/DS18B20.c **** {
+  66              		.loc 1 217 1 is_stmt 1 view -0
   67              		.cfi_startproc
   68              		@ args = 0, pretend = 0, frame = 24
   69              		@ frame_needed = 0, uses_anonymous_args = 0
-  70              		.loc 1 144 68 is_stmt 0 view .LVU8
+  70              		.loc 1 217 1 is_stmt 0 view .LVU8
   71 0000 00B5     		push	{lr}
+ARM GAS  /tmp/ccnQlOiU.s 			page 6
+
+
   72              	.LCFI0:
   73              		.cfi_def_cfa_offset 4
   74              		.cfi_offset 14, -4
   75 0002 87B0     		sub	sp, sp, #28
   76              	.LCFI1:
   77              		.cfi_def_cfa_offset 32
- 145:Core/Src/DS18B20.c **** 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
-  78              		.loc 1 145 2 is_stmt 1 view .LVU9
-  79              		.loc 1 145 19 is_stmt 0 view .LVU10
+ 218:Core/Src/DS18B20.c **** 	GPIO_InitTypeDef GPIO_InitStruct = {0};
+  78              		.loc 1 218 2 is_stmt 1 view .LVU9
+  79              		.loc 1 218 19 is_stmt 0 view .LVU10
   80 0004 0023     		movs	r3, #0
   81 0006 0193     		str	r3, [sp, #4]
   82 0008 0293     		str	r3, [sp, #8]
   83 000a 0393     		str	r3, [sp, #12]
   84 000c 0493     		str	r3, [sp, #16]
   85 000e 0593     		str	r3, [sp, #20]
- 146:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Pin = GPIO_Pin;
-ARM GAS  /tmp/ccTqHLFx.s 			page 5
-
-
-  86              		.loc 1 146 2 is_stmt 1 view .LVU11
-  87              		.loc 1 146 22 is_stmt 0 view .LVU12
+ 219:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Pin = GPIO_Pin;
+  86              		.loc 1 219 2 is_stmt 1 view .LVU11
+  87              		.loc 1 219 22 is_stmt 0 view .LVU12
   88 0010 0191     		str	r1, [sp, #4]
- 147:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  89              		.loc 1 147 2 is_stmt 1 view .LVU13
-  90              		.loc 1 147 23 is_stmt 0 view .LVU14
+ 220:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  89              		.loc 1 220 2 is_stmt 1 view .LVU13
+  90              		.loc 1 220 23 is_stmt 0 view .LVU14
   91 0012 0123     		movs	r3, #1
   92 0014 0293     		str	r3, [sp, #8]
- 148:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  93              		.loc 1 148 2 is_stmt 1 view .LVU15
- 149:Core/Src/DS18B20.c **** 	HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
-  94              		.loc 1 149 2 view .LVU16
+ 221:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  93              		.loc 1 221 2 is_stmt 1 view .LVU15
+ 222:Core/Src/DS18B20.c **** 	HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
+  94              		.loc 1 222 2 view .LVU16
   95 0016 01A9     		add	r1, sp, #4
   96              	.LVL2:
-  97              		.loc 1 149 2 is_stmt 0 view .LVU17
+  97              		.loc 1 222 2 is_stmt 0 view .LVU17
   98 0018 FFF7FEFF 		bl	HAL_GPIO_Init
   99              	.LVL3:
- 150:Core/Src/DS18B20.c **** }
- 100              		.loc 1 150 1 view .LVU18
+ 223:Core/Src/DS18B20.c **** }
+ 100              		.loc 1 223 1 view .LVU18
  101 001c 07B0     		add	sp, sp, #28
  102              	.LCFI2:
  103              		.cfi_def_cfa_offset 4
  104              		@ sp needed
  105 001e 5DF804FB 		ldr	pc, [sp], #4
  106              		.cfi_endproc
- 107              	.LFE136:
+ 107              	.LFE141:
  109              		.section	.text.Set_Pin_Output_Defualt,"ax",%progbits
  110              		.align	1
  111              		.syntax unified
@@ -274,18 +350,23 @@ ARM GAS  /tmp/ccTqHLFx.s 			page 1
  113              		.thumb_func
  114              		.fpu fpv4-sp-d16
  116              	Set_Pin_Output_Defualt:
- 117              	.LFB138:
- 151:Core/Src/DS18B20.c **** 
- 152:Core/Src/DS18B20.c **** static void Set_Pin_Input(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin) {
- 153:Core/Src/DS18B20.c **** 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
- 154:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Pin = GPIO_Pin;
- 155:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
- 156:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Pull = GPIO_NOPULL;
- 157:Core/Src/DS18B20.c **** 	HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
- 158:Core/Src/DS18B20.c **** }
- 159:Core/Src/DS18B20.c **** 
- 160:Core/Src/DS18B20.c **** static void Set_Pin_Output_Defualt() {
- 118              		.loc 1 160 38 is_stmt 1 view -0
+ 117              	.LFB143:
+ 224:Core/Src/DS18B20.c **** 
+ 225:Core/Src/DS18B20.c **** static void Set_Pin_Input(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
+ 226:Core/Src/DS18B20.c **** {
+ 227:Core/Src/DS18B20.c **** 	GPIO_InitTypeDef GPIO_InitStruct = {0};
+ 228:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Pin = GPIO_Pin;
+ 229:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+ 230:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Pull = GPIO_NOPULL;
+ARM GAS  /tmp/ccnQlOiU.s 			page 7
+
+
+ 231:Core/Src/DS18B20.c **** 	HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
+ 232:Core/Src/DS18B20.c **** }
+ 233:Core/Src/DS18B20.c **** 
+ 234:Core/Src/DS18B20.c **** static void Set_Pin_Output_Defualt()
+ 235:Core/Src/DS18B20.c **** {
+ 118              		.loc 1 235 1 is_stmt 1 view -0
  119              		.cfi_startproc
  120              		@ args = 0, pretend = 0, frame = 0
  121              		@ frame_needed = 0, uses_anonymous_args = 0
@@ -294,24 +375,21 @@ ARM GAS  /tmp/ccTqHLFx.s 			page 1
  124              		.cfi_def_cfa_offset 8
  125              		.cfi_offset 3, -8
  126              		.cfi_offset 14, -4
- 161:Core/Src/DS18B20.c **** 	Set_Pin_Output(DS18B20_Port, DS18B20_Pin);
- 127              		.loc 1 161 2 view .LVU20
+ 236:Core/Src/DS18B20.c **** 	Set_Pin_Output(DS18B20_Port, DS18B20_Pin);
+ 127              		.loc 1 236 2 view .LVU20
  128 0002 0121     		movs	r1, #1
  129 0004 0148     		ldr	r0, .L9
-ARM GAS  /tmp/ccTqHLFx.s 			page 6
-
-
  130 0006 FFF7FEFF 		bl	Set_Pin_Output
  131              	.LVL4:
- 162:Core/Src/DS18B20.c **** }
- 132              		.loc 1 162 1 is_stmt 0 view .LVU21
+ 237:Core/Src/DS18B20.c **** }
+ 132              		.loc 1 237 1 is_stmt 0 view .LVU21
  133 000a 08BD     		pop	{r3, pc}
  134              	.L10:
  135              		.align	2
  136              	.L9:
  137 000c 00080240 		.word	1073874944
  138              		.cfi_endproc
- 139              	.LFE138:
+ 139              	.LFE143:
  141              		.section	.text.Set_Pin_Input,"ax",%progbits
  142              		.align	1
  143              		.syntax unified
@@ -320,14 +398,14 @@ ARM GAS  /tmp/ccTqHLFx.s 			page 1
  146              		.fpu fpv4-sp-d16
  148              	Set_Pin_Input:
  149              	.LVL5:
- 150              	.LFB137:
- 152:Core/Src/DS18B20.c **** 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
- 151              		.loc 1 152 67 is_stmt 1 view -0
+ 150              	.LFB142:
+ 226:Core/Src/DS18B20.c **** 	GPIO_InitTypeDef GPIO_InitStruct = {0};
+ 151              		.loc 1 226 1 is_stmt 1 view -0
  152              		.cfi_startproc
  153              		@ args = 0, pretend = 0, frame = 24
  154              		@ frame_needed = 0, uses_anonymous_args = 0
- 152:Core/Src/DS18B20.c **** 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
- 155              		.loc 1 152 67 is_stmt 0 view .LVU23
+ 226:Core/Src/DS18B20.c **** 	GPIO_InitTypeDef GPIO_InitStruct = {0};
+ 155              		.loc 1 226 1 is_stmt 0 view .LVU23
  156 0000 00B5     		push	{lr}
  157              	.LCFI4:
  158              		.cfi_def_cfa_offset 4
@@ -335,45 +413,45 @@ ARM GAS  /tmp/ccTqHLFx.s 			page 1
  160 0002 87B0     		sub	sp, sp, #28
  161              	.LCFI5:
  162              		.cfi_def_cfa_offset 32
- 153:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Pin = GPIO_Pin;
- 163              		.loc 1 153 2 is_stmt 1 view .LVU24
- 153:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Pin = GPIO_Pin;
- 164              		.loc 1 153 19 is_stmt 0 view .LVU25
+ 227:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Pin = GPIO_Pin;
+ 163              		.loc 1 227 2 is_stmt 1 view .LVU24
+ 227:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Pin = GPIO_Pin;
+ 164              		.loc 1 227 19 is_stmt 0 view .LVU25
  165 0004 0023     		movs	r3, #0
+ARM GAS  /tmp/ccnQlOiU.s 			page 8
+
+
  166 0006 0193     		str	r3, [sp, #4]
  167 0008 0293     		str	r3, [sp, #8]
  168 000a 0393     		str	r3, [sp, #12]
  169 000c 0493     		str	r3, [sp, #16]
  170 000e 0593     		str	r3, [sp, #20]
- 154:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
- 171              		.loc 1 154 2 is_stmt 1 view .LVU26
- 154:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
- 172              		.loc 1 154 22 is_stmt 0 view .LVU27
+ 228:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+ 171              		.loc 1 228 2 is_stmt 1 view .LVU26
+ 228:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+ 172              		.loc 1 228 22 is_stmt 0 view .LVU27
  173 0010 0191     		str	r1, [sp, #4]
- 155:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Pull = GPIO_NOPULL;
- 174              		.loc 1 155 2 is_stmt 1 view .LVU28
- 156:Core/Src/DS18B20.c **** 	HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
- 175              		.loc 1 156 2 view .LVU29
- 157:Core/Src/DS18B20.c **** }
- 176              		.loc 1 157 2 view .LVU30
+ 229:Core/Src/DS18B20.c **** 	GPIO_InitStruct.Pull = GPIO_NOPULL;
+ 174              		.loc 1 229 2 is_stmt 1 view .LVU28
+ 230:Core/Src/DS18B20.c **** 	HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
+ 175              		.loc 1 230 2 view .LVU29
+ 231:Core/Src/DS18B20.c **** }
+ 176              		.loc 1 231 2 view .LVU30
  177 0012 01A9     		add	r1, sp, #4
  178              	.LVL6:
-ARM GAS  /tmp/ccTqHLFx.s 			page 7
-
-
- 157:Core/Src/DS18B20.c **** }
- 179              		.loc 1 157 2 is_stmt 0 view .LVU31
+ 231:Core/Src/DS18B20.c **** }
+ 179              		.loc 1 231 2 is_stmt 0 view .LVU31
  180 0014 FFF7FEFF 		bl	HAL_GPIO_Init
  181              	.LVL7:
- 158:Core/Src/DS18B20.c **** 
- 182              		.loc 1 158 1 view .LVU32
+ 232:Core/Src/DS18B20.c **** 
+ 182              		.loc 1 232 1 view .LVU32
  183 0018 07B0     		add	sp, sp, #28
  184              	.LCFI6:
  185              		.cfi_def_cfa_offset 4
  186              		@ sp needed
  187 001a 5DF804FB 		ldr	pc, [sp], #4
  188              		.cfi_endproc
- 189              	.LFE137:
+ 189              	.LFE142:
  191              		.section	.text.Set_Pin_Input_Defualt,"ax",%progbits
  192              		.align	1
  193              		.syntax unified
@@ -381,10 +459,11 @@ ARM GAS  /tmp/ccTqHLFx.s 			page 1
  195              		.thumb_func
  196              		.fpu fpv4-sp-d16
  198              	Set_Pin_Input_Defualt:
- 199              	.LFB139:
- 163:Core/Src/DS18B20.c **** 
- 164:Core/Src/DS18B20.c **** static void Set_Pin_Input_Defualt() {
- 200              		.loc 1 164 37 is_stmt 1 view -0
+ 199              	.LFB144:
+ 238:Core/Src/DS18B20.c **** 
+ 239:Core/Src/DS18B20.c **** static void Set_Pin_Input_Defualt()
+ 240:Core/Src/DS18B20.c **** {
+ 200              		.loc 1 240 1 is_stmt 1 view -0
  201              		.cfi_startproc
  202              		@ args = 0, pretend = 0, frame = 0
  203              		@ frame_needed = 0, uses_anonymous_args = 0
@@ -393,21 +472,24 @@ ARM GAS  /tmp/ccTqHLFx.s 			page 1
  206              		.cfi_def_cfa_offset 8
  207              		.cfi_offset 3, -8
  208              		.cfi_offset 14, -4
- 165:Core/Src/DS18B20.c **** 	Set_Pin_Input(DS18B20_Port, DS18B20_Pin);
- 209              		.loc 1 165 2 view .LVU34
+ 241:Core/Src/DS18B20.c **** 	Set_Pin_Input(DS18B20_Port, DS18B20_Pin);
+ 209              		.loc 1 241 2 view .LVU34
  210 0002 0121     		movs	r1, #1
  211 0004 0148     		ldr	r0, .L15
  212 0006 FFF7FEFF 		bl	Set_Pin_Input
  213              	.LVL8:
- 166:Core/Src/DS18B20.c **** }
- 214              		.loc 1 166 1 is_stmt 0 view .LVU35
+ARM GAS  /tmp/ccnQlOiU.s 			page 9
+
+
+ 242:Core/Src/DS18B20.c **** }
+ 214              		.loc 1 242 1 is_stmt 0 view .LVU35
  215 000a 08BD     		pop	{r3, pc}
  216              	.L16:
  217              		.align	2
  218              	.L15:
  219 000c 00080240 		.word	1073874944
  220              		.cfi_endproc
- 221              	.LFE139:
+ 221              	.LFE144:
  223              		.section	.text.DS18B20_Initialize,"ax",%progbits
  224              		.align	1
  225              		.global	DS18B20_Initialize
@@ -417,11 +499,8 @@ ARM GAS  /tmp/ccTqHLFx.s 			page 1
  229              		.fpu fpv4-sp-d16
  231              	DS18B20_Initialize:
  232              	.LFB130:
-  21:Core/Src/DS18B20.c **** 	uint8_t response;
-ARM GAS  /tmp/ccTqHLFx.s 			page 8
-
-
- 233              		.loc 1 21 26 is_stmt 1 view -0
+  29:Core/Src/DS18B20.c **** 	uint8_t response;
+ 233              		.loc 1 29 1 is_stmt 1 view -0
  234              		.cfi_startproc
  235              		@ args = 0, pretend = 0, frame = 0
  236              		@ frame_needed = 0, uses_anonymous_args = 0
@@ -430,720 +509,1000 @@ ARM GAS  /tmp/ccTqHLFx.s 			page 1
  239              		.cfi_def_cfa_offset 8
  240              		.cfi_offset 4, -8
  241              		.cfi_offset 14, -4
-  22:Core/Src/DS18B20.c **** 	Set_Pin_Output_Defualt();
- 242              		.loc 1 22 2 view .LVU37
-  23:Core/Src/DS18B20.c **** 	HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
- 243              		.loc 1 23 2 view .LVU38
+  30:Core/Src/DS18B20.c **** 	Set_Pin_Output_Defualt();
+ 242              		.loc 1 30 2 view .LVU37
+  31:Core/Src/DS18B20.c **** 	HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
+ 243              		.loc 1 31 2 view .LVU38
  244 0002 FFF7FEFF 		bl	Set_Pin_Output_Defualt
  245              	.LVL9:
-  24:Core/Src/DS18B20.c **** 	micro_delay(480); //datasheet
- 246              		.loc 1 24 2 view .LVU39
+  32:Core/Src/DS18B20.c **** 	micro_delay(480); //datasheet
+ 246              		.loc 1 32 2 view .LVU39
  247 0006 0E4C     		ldr	r4, .L21
  248 0008 0022     		movs	r2, #0
  249 000a 0121     		movs	r1, #1
  250 000c 2046     		mov	r0, r4
  251 000e FFF7FEFF 		bl	HAL_GPIO_WritePin
  252              	.LVL10:
-  25:Core/Src/DS18B20.c **** 	Set_Pin_Input_Defualt();
- 253              		.loc 1 25 2 view .LVU40
+  33:Core/Src/DS18B20.c **** 	Set_Pin_Input_Defualt();
+ 253              		.loc 1 33 2 view .LVU40
  254 0012 4FF4F070 		mov	r0, #480
  255 0016 FFF7FEFF 		bl	micro_delay
  256              	.LVL11:
-  26:Core/Src/DS18B20.c **** 	micro_delay(100); //datasheet
- 257              		.loc 1 26 2 view .LVU41
+  34:Core/Src/DS18B20.c **** 	micro_delay(100); //datasheet
+ 257              		.loc 1 34 2 view .LVU41
  258 001a FFF7FEFF 		bl	Set_Pin_Input_Defualt
  259              	.LVL12:
-  27:Core/Src/DS18B20.c **** 	if (!HAL_GPIO_ReadPin(DS18B20_Port, DS18B20_Pin)) {
- 260              		.loc 1 27 2 view .LVU42
+  35:Core/Src/DS18B20.c **** 	if (!HAL_GPIO_ReadPin(DS18B20_Port, DS18B20_Pin))
+ 260              		.loc 1 35 2 view .LVU42
  261 001e 6420     		movs	r0, #100
  262 0020 FFF7FEFF 		bl	micro_delay
  263              	.LVL13:
-  28:Core/Src/DS18B20.c **** 		response = 0; //correct
- 264              		.loc 1 28 2 view .LVU43
-  28:Core/Src/DS18B20.c **** 		response = 0; //correct
- 265              		.loc 1 28 7 is_stmt 0 view .LVU44
+  36:Core/Src/DS18B20.c **** 	{
+ARM GAS  /tmp/ccnQlOiU.s 			page 10
+
+
+ 264              		.loc 1 36 2 view .LVU43
+  36:Core/Src/DS18B20.c **** 	{
+ 265              		.loc 1 36 7 is_stmt 0 view .LVU44
  266 0024 0121     		movs	r1, #1
  267 0026 2046     		mov	r0, r4
  268 0028 FFF7FEFF 		bl	HAL_GPIO_ReadPin
  269              	.LVL14:
-  28:Core/Src/DS18B20.c **** 		response = 0; //correct
- 270              		.loc 1 28 5 view .LVU45
+  36:Core/Src/DS18B20.c **** 	{
+ 270              		.loc 1 36 5 view .LVU45
  271 002c 0446     		mov	r4, r0
  272 002e 00B1     		cbz	r0, .L18
-  31:Core/Src/DS18B20.c **** 	}
- 273              		.loc 1 31 12 view .LVU46
+  42:Core/Src/DS18B20.c **** 	}
+ 273              		.loc 1 42 12 view .LVU46
  274 0030 0124     		movs	r4, #1
  275              	.L18:
  276              	.LVL15:
-  33:Core/Src/DS18B20.c **** 	return response;
- 277              		.loc 1 33 2 is_stmt 1 view .LVU47
+  44:Core/Src/DS18B20.c **** 	return response;
+ 277              		.loc 1 44 2 is_stmt 1 view .LVU47
  278 0032 4FF4BE70 		mov	r0, #380
-ARM GAS  /tmp/ccTqHLFx.s 			page 9
-
-
  279 0036 FFF7FEFF 		bl	micro_delay
  280              	.LVL16:
-  34:Core/Src/DS18B20.c **** }
- 281              		.loc 1 34 2 view .LVU48
-  35:Core/Src/DS18B20.c **** 
- 282              		.loc 1 35 1 is_stmt 0 view .LVU49
+  45:Core/Src/DS18B20.c **** }
+ 281              		.loc 1 45 2 view .LVU48
+  46:Core/Src/DS18B20.c **** 
+ 282              		.loc 1 46 1 is_stmt 0 view .LVU49
  283 003a 2046     		mov	r0, r4
  284 003c 10BD     		pop	{r4, pc}
  285              	.LVL17:
  286              	.L22:
-  35:Core/Src/DS18B20.c **** 
- 287              		.loc 1 35 1 view .LVU50
+  46:Core/Src/DS18B20.c **** 
+ 287              		.loc 1 46 1 view .LVU50
  288 003e 00BF     		.align	2
  289              	.L21:
  290 0040 00080240 		.word	1073874944
  291              		.cfi_endproc
  292              	.LFE130:
- 294              		.section	.text.DS18B20_Write_Byte,"ax",%progbits
+ 294              		.section	.text.Read_Temperature_Stage_0,"ax",%progbits
  295              		.align	1
- 296              		.global	DS18B20_Write_Byte
- 297              		.syntax unified
- 298              		.thumb
- 299              		.thumb_func
- 300              		.fpu fpv4-sp-d16
- 302              	DS18B20_Write_Byte:
- 303              	.LVL18:
- 304              	.LFB133:
- 102:Core/Src/DS18B20.c **** 	for (int i = 0; i < 8; i++) {
- 305              		.loc 1 102 39 is_stmt 1 view -0
- 306              		.cfi_startproc
- 307              		@ args = 0, pretend = 0, frame = 0
- 308              		@ frame_needed = 0, uses_anonymous_args = 0
- 102:Core/Src/DS18B20.c **** 	for (int i = 0; i < 8; i++) {
- 309              		.loc 1 102 39 is_stmt 0 view .LVU52
- 310 0000 38B5     		push	{r3, r4, r5, lr}
- 311              	.LCFI9:
- 312              		.cfi_def_cfa_offset 16
- 313              		.cfi_offset 3, -16
- 314              		.cfi_offset 4, -12
- 315              		.cfi_offset 5, -8
- 316              		.cfi_offset 14, -4
- 317 0002 0546     		mov	r5, r0
- 103:Core/Src/DS18B20.c **** 		if ((byte & (1 << i)) != 0) {
- 318              		.loc 1 103 2 is_stmt 1 view .LVU53
- 319              	.LBB2:
- 103:Core/Src/DS18B20.c **** 		if ((byte & (1 << i)) != 0) {
- 320              		.loc 1 103 7 view .LVU54
- 321              	.LVL19:
- 103:Core/Src/DS18B20.c **** 		if ((byte & (1 << i)) != 0) {
- 322              		.loc 1 103 11 is_stmt 0 view .LVU55
- 323 0004 0024     		movs	r4, #0
- 103:Core/Src/DS18B20.c **** 		if ((byte & (1 << i)) != 0) {
- 324              		.loc 1 103 2 view .LVU56
- 325 0006 0CE0     		b	.L24
- 326              	.LVL20:
- 327              	.L25:
- 111:Core/Src/DS18B20.c **** 			HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
-ARM GAS  /tmp/ccTqHLFx.s 			page 10
+ 296              		.syntax unified
+ 297              		.thumb
+ 298              		.thumb_func
+ 299              		.fpu fpv4-sp-d16
+ 301              	Read_Temperature_Stage_0:
+ 302              	.LFB136:
+ 178:Core/Src/DS18B20.c **** 	if (DS18B20_Initialize())
+ 303              		.loc 1 178 1 is_stmt 1 view -0
+ 304              		.cfi_startproc
+ 305              		@ args = 0, pretend = 0, frame = 0
+ 306              		@ frame_needed = 0, uses_anonymous_args = 0
+ 307 0000 08B5     		push	{r3, lr}
+ 308              	.LCFI9:
+ 309              		.cfi_def_cfa_offset 8
+ 310              		.cfi_offset 3, -8
+ 311              		.cfi_offset 14, -4
+ 179:Core/Src/DS18B20.c **** 	{
+ 312              		.loc 1 179 2 view .LVU52
+ 179:Core/Src/DS18B20.c **** 	{
+ARM GAS  /tmp/ccnQlOiU.s 			page 11
 
 
- 328              		.loc 1 111 4 is_stmt 1 view .LVU57
- 329 0008 FFF7FEFF 		bl	Set_Pin_Output_Defualt
- 330              	.LVL21:
- 112:Core/Src/DS18B20.c **** 			micro_delay(60);
- 331              		.loc 1 112 4 view .LVU58
- 332 000c 0022     		movs	r2, #0
- 333 000e 0121     		movs	r1, #1
- 334 0010 1048     		ldr	r0, .L30
- 335 0012 FFF7FEFF 		bl	HAL_GPIO_WritePin
- 336              	.LVL22:
- 113:Core/Src/DS18B20.c **** 			Set_Pin_Input_Defualt();
- 337              		.loc 1 113 4 view .LVU59
- 338 0016 3C20     		movs	r0, #60
- 339 0018 FFF7FEFF 		bl	micro_delay
- 340              	.LVL23:
- 114:Core/Src/DS18B20.c **** 		}
- 341              		.loc 1 114 4 view .LVU60
- 342 001c FFF7FEFF 		bl	Set_Pin_Input_Defualt
- 343              	.LVL24:
- 344              	.L26:
- 103:Core/Src/DS18B20.c **** 		if ((byte & (1 << i)) != 0) {
- 345              		.loc 1 103 26 discriminator 2 view .LVU61
- 346 0020 0134     		adds	r4, r4, #1
- 347              	.LVL25:
- 348              	.L24:
- 103:Core/Src/DS18B20.c **** 		if ((byte & (1 << i)) != 0) {
- 349              		.loc 1 103 20 discriminator 1 view .LVU62
- 350 0022 072C     		cmp	r4, #7
- 351 0024 14DC     		bgt	.L29
- 104:Core/Src/DS18B20.c **** 			Set_Pin_Output_Defualt();
- 352              		.loc 1 104 3 view .LVU63
- 104:Core/Src/DS18B20.c **** 			Set_Pin_Output_Defualt();
- 353              		.loc 1 104 25 is_stmt 0 view .LVU64
- 354 0026 45FA04F3 		asr	r3, r5, r4
- 104:Core/Src/DS18B20.c **** 			Set_Pin_Output_Defualt();
- 355              		.loc 1 104 6 view .LVU65
- 356 002a 13F0010F 		tst	r3, #1
- 357 002e EBD0     		beq	.L25
- 105:Core/Src/DS18B20.c **** 			HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
- 358              		.loc 1 105 4 is_stmt 1 view .LVU66
- 359 0030 FFF7FEFF 		bl	Set_Pin_Output_Defualt
- 360              	.LVL26:
- 106:Core/Src/DS18B20.c **** 			micro_delay(1);
- 361              		.loc 1 106 4 view .LVU67
- 362 0034 0022     		movs	r2, #0
- 363 0036 0121     		movs	r1, #1
- 364 0038 0648     		ldr	r0, .L30
- 365 003a FFF7FEFF 		bl	HAL_GPIO_WritePin
- 366              	.LVL27:
- 107:Core/Src/DS18B20.c **** 			Set_Pin_Input_Defualt();
- 367              		.loc 1 107 4 view .LVU68
- 368 003e 0120     		movs	r0, #1
- 369 0040 FFF7FEFF 		bl	micro_delay
- 370              	.LVL28:
- 108:Core/Src/DS18B20.c **** 			micro_delay(60);
- 371              		.loc 1 108 4 view .LVU69
- 372 0044 FFF7FEFF 		bl	Set_Pin_Input_Defualt
-ARM GAS  /tmp/ccTqHLFx.s 			page 11
+ 313              		.loc 1 179 6 is_stmt 0 view .LVU53
+ 314 0002 FFF7FEFF 		bl	DS18B20_Initialize
+ 315              	.LVL18:
+ 179:Core/Src/DS18B20.c **** 	{
+ 316              		.loc 1 179 5 view .LVU54
+ 317 0006 00B9     		cbnz	r0, .L27
+ 318              	.L23:
+ 184:Core/Src/DS18B20.c **** static void Read_Temperature_Stage_1()
+ 319              		.loc 1 184 1 view .LVU55
+ 320 0008 08BD     		pop	{r3, pc}
+ 321              	.L27:
+ 181:Core/Src/DS18B20.c **** 	}
+ 322              		.loc 1 181 10 view .LVU56
+ 323 000a 0120     		movs	r0, #1
+ 324 000c FCE7     		b	.L23
+ 325              		.cfi_endproc
+ 326              	.LFE136:
+ 328              		.section	.text.Read_Temperature_Stage_2,"ax",%progbits
+ 329              		.align	1
+ 330              		.syntax unified
+ 331              		.thumb
+ 332              		.thumb_func
+ 333              		.fpu fpv4-sp-d16
+ 335              	Read_Temperature_Stage_2:
+ 336              	.LFB138:
+ 191:Core/Src/DS18B20.c **** 	if (DS18B20_Initialize())
+ 337              		.loc 1 191 1 is_stmt 1 view -0
+ 338              		.cfi_startproc
+ 339              		@ args = 0, pretend = 0, frame = 0
+ 340              		@ frame_needed = 0, uses_anonymous_args = 0
+ 341 0000 08B5     		push	{r3, lr}
+ 342              	.LCFI10:
+ 343              		.cfi_def_cfa_offset 8
+ 344              		.cfi_offset 3, -8
+ 345              		.cfi_offset 14, -4
+ 192:Core/Src/DS18B20.c **** 	{
+ 346              		.loc 1 192 2 view .LVU58
+ 192:Core/Src/DS18B20.c **** 	{
+ 347              		.loc 1 192 6 is_stmt 0 view .LVU59
+ 348 0002 FFF7FEFF 		bl	DS18B20_Initialize
+ 349              	.LVL19:
+ 192:Core/Src/DS18B20.c **** 	{
+ 350              		.loc 1 192 5 view .LVU60
+ 351 0006 00B9     		cbnz	r0, .L32
+ 352              	.L28:
+ 197:Core/Src/DS18B20.c **** static void Read_Temperature_Stage_3()
+ 353              		.loc 1 197 1 view .LVU61
+ 354 0008 08BD     		pop	{r3, pc}
+ 355              	.L32:
+ 194:Core/Src/DS18B20.c **** 	}
+ 356              		.loc 1 194 10 view .LVU62
+ 357 000a 0120     		movs	r0, #1
+ 358 000c FCE7     		b	.L28
+ 359              		.cfi_endproc
+ 360              	.LFE138:
+ 362              		.section	.text.DS18B20_Write_Byte,"ax",%progbits
+ 363              		.align	1
+ARM GAS  /tmp/ccnQlOiU.s 			page 12
 
 
- 373              	.LVL29:
- 109:Core/Src/DS18B20.c **** 		} else {
- 374              		.loc 1 109 4 view .LVU70
- 375 0048 3C20     		movs	r0, #60
- 376 004a FFF7FEFF 		bl	micro_delay
- 377              	.LVL30:
- 378 004e E7E7     		b	.L26
- 379              	.L29:
- 380              	.LBE2:
- 117:Core/Src/DS18B20.c **** 
- 381              		.loc 1 117 1 is_stmt 0 view .LVU71
- 382 0050 38BD     		pop	{r3, r4, r5, pc}
- 383              	.LVL31:
- 384              	.L31:
- 117:Core/Src/DS18B20.c **** 
- 385              		.loc 1 117 1 view .LVU72
- 386 0052 00BF     		.align	2
- 387              	.L30:
- 388 0054 00080240 		.word	1073874944
- 389              		.cfi_endproc
- 390              	.LFE133:
- 392              		.section	.text.DS18B20_Read_Byte,"ax",%progbits
- 393              		.align	1
- 394              		.global	DS18B20_Read_Byte
- 395              		.syntax unified
- 396              		.thumb
- 397              		.thumb_func
- 398              		.fpu fpv4-sp-d16
- 400              	DS18B20_Read_Byte:
- 401              	.LFB134:
- 119:Core/Src/DS18B20.c **** 	uint8_t byte = 0;
- 402              		.loc 1 119 29 is_stmt 1 view -0
- 403              		.cfi_startproc
- 404              		@ args = 0, pretend = 0, frame = 0
- 405              		@ frame_needed = 0, uses_anonymous_args = 0
- 406 0000 70B5     		push	{r4, r5, r6, lr}
- 407              	.LCFI10:
- 408              		.cfi_def_cfa_offset 16
- 409              		.cfi_offset 4, -16
- 410              		.cfi_offset 5, -12
- 411              		.cfi_offset 6, -8
- 412              		.cfi_offset 14, -4
- 120:Core/Src/DS18B20.c **** 	Set_Pin_Input_Defualt();
- 413              		.loc 1 120 2 view .LVU74
- 414              	.LVL32:
- 121:Core/Src/DS18B20.c **** 	for (int i = 0; i < 8; i++) {
- 415              		.loc 1 121 2 view .LVU75
- 416 0002 FFF7FEFF 		bl	Set_Pin_Input_Defualt
- 417              	.LVL33:
- 122:Core/Src/DS18B20.c **** 		Set_Pin_Output_Defualt();
- 418              		.loc 1 122 2 view .LVU76
- 419              	.LBB3:
- 122:Core/Src/DS18B20.c **** 		Set_Pin_Output_Defualt();
- 420              		.loc 1 122 7 view .LVU77
- 122:Core/Src/DS18B20.c **** 		Set_Pin_Output_Defualt();
- 421              		.loc 1 122 11 is_stmt 0 view .LVU78
- 422 0006 0024     		movs	r4, #0
-ARM GAS  /tmp/ccTqHLFx.s 			page 12
+ 364              		.global	DS18B20_Write_Byte
+ 365              		.syntax unified
+ 366              		.thumb
+ 367              		.thumb_func
+ 368              		.fpu fpv4-sp-d16
+ 370              	DS18B20_Write_Byte:
+ 371              	.LVL20:
+ 372              	.LFB133:
+  89:Core/Src/DS18B20.c **** 	for (int i = 0; i < 8; i++)
+ 373              		.loc 1 89 1 is_stmt 1 view -0
+ 374              		.cfi_startproc
+ 375              		@ args = 0, pretend = 0, frame = 0
+ 376              		@ frame_needed = 0, uses_anonymous_args = 0
+  89:Core/Src/DS18B20.c **** 	for (int i = 0; i < 8; i++)
+ 377              		.loc 1 89 1 is_stmt 0 view .LVU64
+ 378 0000 38B5     		push	{r3, r4, r5, lr}
+ 379              	.LCFI11:
+ 380              		.cfi_def_cfa_offset 16
+ 381              		.cfi_offset 3, -16
+ 382              		.cfi_offset 4, -12
+ 383              		.cfi_offset 5, -8
+ 384              		.cfi_offset 14, -4
+ 385 0002 0546     		mov	r5, r0
+  90:Core/Src/DS18B20.c **** 	{
+ 386              		.loc 1 90 2 is_stmt 1 view .LVU65
+ 387              	.LBB2:
+  90:Core/Src/DS18B20.c **** 	{
+ 388              		.loc 1 90 7 view .LVU66
+ 389              	.LVL21:
+  90:Core/Src/DS18B20.c **** 	{
+ 390              		.loc 1 90 11 is_stmt 0 view .LVU67
+ 391 0004 0024     		movs	r4, #0
+  90:Core/Src/DS18B20.c **** 	{
+ 392              		.loc 1 90 2 view .LVU68
+ 393 0006 0CE0     		b	.L34
+ 394              	.LVL22:
+ 395              	.L35:
+ 102:Core/Src/DS18B20.c **** 			HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
+ 396              		.loc 1 102 4 is_stmt 1 view .LVU69
+ 397 0008 FFF7FEFF 		bl	Set_Pin_Output_Defualt
+ 398              	.LVL23:
+ 103:Core/Src/DS18B20.c **** 			micro_delay(60);
+ 399              		.loc 1 103 4 view .LVU70
+ 400 000c 0022     		movs	r2, #0
+ 401 000e 0121     		movs	r1, #1
+ 402 0010 1048     		ldr	r0, .L40
+ 403 0012 FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 404              	.LVL24:
+ 104:Core/Src/DS18B20.c **** 			Set_Pin_Input_Defualt();
+ 405              		.loc 1 104 4 view .LVU71
+ 406 0016 3C20     		movs	r0, #60
+ 407 0018 FFF7FEFF 		bl	micro_delay
+ 408              	.LVL25:
+ 105:Core/Src/DS18B20.c **** 		}
+ 409              		.loc 1 105 4 view .LVU72
+ 410 001c FFF7FEFF 		bl	Set_Pin_Input_Defualt
+ 411              	.LVL26:
+ARM GAS  /tmp/ccnQlOiU.s 			page 13
 
 
- 423              	.LBE3:
- 120:Core/Src/DS18B20.c **** 	Set_Pin_Input_Defualt();
- 424              		.loc 1 120 10 view .LVU79
- 425 0008 2646     		mov	r6, r4
- 426              	.LBB4:
- 122:Core/Src/DS18B20.c **** 		Set_Pin_Output_Defualt();
- 427              		.loc 1 122 2 view .LVU80
- 428 000a 03E0     		b	.L33
- 429              	.LVL34:
- 430              	.L34:
- 131:Core/Src/DS18B20.c **** 	}
- 431              		.loc 1 131 3 is_stmt 1 discriminator 2 view .LVU81
- 432 000c 3220     		movs	r0, #50
- 433 000e FFF7FEFF 		bl	micro_delay
- 434              	.LVL35:
- 122:Core/Src/DS18B20.c **** 		Set_Pin_Output_Defualt();
- 435              		.loc 1 122 26 discriminator 2 view .LVU82
- 436 0012 0134     		adds	r4, r4, #1
- 437              	.LVL36:
- 438              	.L33:
- 122:Core/Src/DS18B20.c **** 		Set_Pin_Output_Defualt();
- 439              		.loc 1 122 20 discriminator 1 view .LVU83
- 440 0014 072C     		cmp	r4, #7
- 441 0016 1ADC     		bgt	.L37
- 123:Core/Src/DS18B20.c **** 		HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
- 442              		.loc 1 123 3 view .LVU84
- 443 0018 FFF7FEFF 		bl	Set_Pin_Output_Defualt
- 444              	.LVL37:
- 124:Core/Src/DS18B20.c **** 		micro_delay(2);
- 445              		.loc 1 124 3 view .LVU85
- 446 001c 0D4D     		ldr	r5, .L38
- 447 001e 0022     		movs	r2, #0
- 448 0020 0121     		movs	r1, #1
- 449 0022 2846     		mov	r0, r5
- 450 0024 FFF7FEFF 		bl	HAL_GPIO_WritePin
- 451              	.LVL38:
- 125:Core/Src/DS18B20.c **** 		Set_Pin_Input_Defualt();
- 452              		.loc 1 125 3 view .LVU86
- 453 0028 0220     		movs	r0, #2
- 454 002a FFF7FEFF 		bl	micro_delay
- 455              	.LVL39:
- 126:Core/Src/DS18B20.c **** 		micro_delay(10);
- 456              		.loc 1 126 3 view .LVU87
- 457 002e FFF7FEFF 		bl	Set_Pin_Input_Defualt
- 458              	.LVL40:
- 127:Core/Src/DS18B20.c **** 		if (HAL_GPIO_ReadPin(DS18B20_Port, DS18B20_Pin)) {
- 459              		.loc 1 127 3 view .LVU88
- 460 0032 0A20     		movs	r0, #10
- 461 0034 FFF7FEFF 		bl	micro_delay
- 462              	.LVL41:
- 128:Core/Src/DS18B20.c **** 			byte |= 1 << i;
- 463              		.loc 1 128 3 view .LVU89
- 128:Core/Src/DS18B20.c **** 			byte |= 1 << i;
- 464              		.loc 1 128 7 is_stmt 0 view .LVU90
- 465 0038 0121     		movs	r1, #1
- 466 003a 2846     		mov	r0, r5
- 467 003c FFF7FEFF 		bl	HAL_GPIO_ReadPin
-ARM GAS  /tmp/ccTqHLFx.s 			page 13
+ 412              	.L36:
+  90:Core/Src/DS18B20.c **** 	{
+ 413              		.loc 1 90 26 discriminator 2 view .LVU73
+ 414 0020 0134     		adds	r4, r4, #1
+ 415              	.LVL27:
+ 416              	.L34:
+  90:Core/Src/DS18B20.c **** 	{
+ 417              		.loc 1 90 20 discriminator 1 view .LVU74
+ 418 0022 072C     		cmp	r4, #7
+ 419 0024 14DC     		bgt	.L39
+  92:Core/Src/DS18B20.c **** 		{
+ 420              		.loc 1 92 3 view .LVU75
+  92:Core/Src/DS18B20.c **** 		{
+ 421              		.loc 1 92 25 is_stmt 0 view .LVU76
+ 422 0026 45FA04F3 		asr	r3, r5, r4
+  92:Core/Src/DS18B20.c **** 		{
+ 423              		.loc 1 92 6 view .LVU77
+ 424 002a 13F0010F 		tst	r3, #1
+ 425 002e EBD0     		beq	.L35
+  94:Core/Src/DS18B20.c **** 			HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
+ 426              		.loc 1 94 4 is_stmt 1 view .LVU78
+ 427 0030 FFF7FEFF 		bl	Set_Pin_Output_Defualt
+ 428              	.LVL28:
+  95:Core/Src/DS18B20.c **** 			micro_delay(1);
+ 429              		.loc 1 95 4 view .LVU79
+ 430 0034 0022     		movs	r2, #0
+ 431 0036 0121     		movs	r1, #1
+ 432 0038 0648     		ldr	r0, .L40
+ 433 003a FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 434              	.LVL29:
+  96:Core/Src/DS18B20.c **** 			Set_Pin_Input_Defualt();
+ 435              		.loc 1 96 4 view .LVU80
+ 436 003e 0120     		movs	r0, #1
+ 437 0040 FFF7FEFF 		bl	micro_delay
+ 438              	.LVL30:
+  97:Core/Src/DS18B20.c **** 			micro_delay(60);
+ 439              		.loc 1 97 4 view .LVU81
+ 440 0044 FFF7FEFF 		bl	Set_Pin_Input_Defualt
+ 441              	.LVL31:
+  98:Core/Src/DS18B20.c **** 		}
+ 442              		.loc 1 98 4 view .LVU82
+ 443 0048 3C20     		movs	r0, #60
+ 444 004a FFF7FEFF 		bl	micro_delay
+ 445              	.LVL32:
+ 446 004e E7E7     		b	.L36
+ 447              	.L39:
+ 448              	.LBE2:
+ 108:Core/Src/DS18B20.c **** 
+ 449              		.loc 1 108 1 is_stmt 0 view .LVU83
+ 450 0050 38BD     		pop	{r3, r4, r5, pc}
+ 451              	.LVL33:
+ 452              	.L41:
+ 108:Core/Src/DS18B20.c **** 
+ 453              		.loc 1 108 1 view .LVU84
+ 454 0052 00BF     		.align	2
+ 455              	.L40:
+ 456 0054 00080240 		.word	1073874944
+ARM GAS  /tmp/ccnQlOiU.s 			page 14
 
 
- 468              	.LVL42:
- 128:Core/Src/DS18B20.c **** 			byte |= 1 << i;
- 469              		.loc 1 128 6 view .LVU91
- 470 0040 0028     		cmp	r0, #0
- 471 0042 E3D0     		beq	.L34
- 129:Core/Src/DS18B20.c **** 		}
- 472              		.loc 1 129 4 is_stmt 1 view .LVU92
- 129:Core/Src/DS18B20.c **** 		}
- 473              		.loc 1 129 14 is_stmt 0 view .LVU93
- 474 0044 0123     		movs	r3, #1
- 475 0046 A340     		lsls	r3, r3, r4
- 129:Core/Src/DS18B20.c **** 		}
- 476              		.loc 1 129 9 view .LVU94
- 477 0048 1E43     		orrs	r6, r6, r3
- 478              	.LVL43:
- 129:Core/Src/DS18B20.c **** 		}
- 479              		.loc 1 129 9 view .LVU95
- 480 004a F6B2     		uxtb	r6, r6
- 481              	.LVL44:
- 129:Core/Src/DS18B20.c **** 		}
- 482              		.loc 1 129 9 view .LVU96
- 483 004c DEE7     		b	.L34
- 484              	.L37:
- 129:Core/Src/DS18B20.c **** 		}
- 485              		.loc 1 129 9 view .LVU97
- 486              	.LBE4:
- 133:Core/Src/DS18B20.c **** }
- 487              		.loc 1 133 2 is_stmt 1 view .LVU98
- 134:Core/Src/DS18B20.c **** 
- 488              		.loc 1 134 1 is_stmt 0 view .LVU99
- 489 004e 3046     		mov	r0, r6
- 490 0050 70BD     		pop	{r4, r5, r6, pc}
- 491              	.LVL45:
- 492              	.L39:
- 134:Core/Src/DS18B20.c **** 
- 493              		.loc 1 134 1 view .LVU100
- 494 0052 00BF     		.align	2
- 495              	.L38:
- 496 0054 00080240 		.word	1073874944
- 497              		.cfi_endproc
- 498              	.LFE134:
- 500              		.section	.text.DS18B20_Read_Temperature,"ax",%progbits
- 501              		.align	1
- 502              		.global	DS18B20_Read_Temperature
- 503              		.syntax unified
- 504              		.thumb
- 505              		.thumb_func
- 506              		.fpu fpv4-sp-d16
- 508              	DS18B20_Read_Temperature:
- 509              	.LFB131:
-  37:Core/Src/DS18B20.c **** 	if (DS18B20_Initialize()) {
- 510              		.loc 1 37 34 is_stmt 1 view -0
- 511              		.cfi_startproc
- 512              		@ args = 0, pretend = 0, frame = 0
- 513              		@ frame_needed = 0, uses_anonymous_args = 0
- 514 0000 10B5     		push	{r4, lr}
- 515              	.LCFI11:
-ARM GAS  /tmp/ccTqHLFx.s 			page 14
+ 457              		.cfi_endproc
+ 458              	.LFE133:
+ 460              		.section	.text.Read_Temperature_Stage_1,"ax",%progbits
+ 461              		.align	1
+ 462              		.syntax unified
+ 463              		.thumb
+ 464              		.thumb_func
+ 465              		.fpu fpv4-sp-d16
+ 467              	Read_Temperature_Stage_1:
+ 468              	.LFB137:
+ 186:Core/Src/DS18B20.c **** 	DS18B20_Write_Byte(SKIP_ROM);  //Single device connected
+ 469              		.loc 1 186 1 is_stmt 1 view -0
+ 470              		.cfi_startproc
+ 471              		@ args = 0, pretend = 0, frame = 0
+ 472              		@ frame_needed = 0, uses_anonymous_args = 0
+ 473 0000 08B5     		push	{r3, lr}
+ 474              	.LCFI12:
+ 475              		.cfi_def_cfa_offset 8
+ 476              		.cfi_offset 3, -8
+ 477              		.cfi_offset 14, -4
+ 187:Core/Src/DS18B20.c **** 	DS18B20_Write_Byte(CONVERT_T); //Start temperature conversion
+ 478              		.loc 1 187 2 view .LVU86
+ 479 0002 CC20     		movs	r0, #204
+ 480 0004 FFF7FEFF 		bl	DS18B20_Write_Byte
+ 481              	.LVL34:
+ 188:Core/Src/DS18B20.c **** }
+ 482              		.loc 1 188 2 view .LVU87
+ 483 0008 4420     		movs	r0, #68
+ 484 000a FFF7FEFF 		bl	DS18B20_Write_Byte
+ 485              	.LVL35:
+ 189:Core/Src/DS18B20.c **** static int Read_Temperature_Stage_2()
+ 486              		.loc 1 189 1 is_stmt 0 view .LVU88
+ 487 000e 08BD     		pop	{r3, pc}
+ 488              		.cfi_endproc
+ 489              	.LFE137:
+ 491              		.section	.text.DS18B20_Read_Byte,"ax",%progbits
+ 492              		.align	1
+ 493              		.global	DS18B20_Read_Byte
+ 494              		.syntax unified
+ 495              		.thumb
+ 496              		.thumb_func
+ 497              		.fpu fpv4-sp-d16
+ 499              	DS18B20_Read_Byte:
+ 500              	.LFB134:
+ 111:Core/Src/DS18B20.c **** 	uint8_t byte = 0;
+ 501              		.loc 1 111 1 is_stmt 1 view -0
+ 502              		.cfi_startproc
+ 503              		@ args = 0, pretend = 0, frame = 0
+ 504              		@ frame_needed = 0, uses_anonymous_args = 0
+ 505 0000 70B5     		push	{r4, r5, r6, lr}
+ 506              	.LCFI13:
+ 507              		.cfi_def_cfa_offset 16
+ 508              		.cfi_offset 4, -16
+ 509              		.cfi_offset 5, -12
+ 510              		.cfi_offset 6, -8
+ 511              		.cfi_offset 14, -4
+ 112:Core/Src/DS18B20.c **** 	Set_Pin_Input_Defualt();
+ARM GAS  /tmp/ccnQlOiU.s 			page 15
 
 
- 516              		.cfi_def_cfa_offset 8
- 517              		.cfi_offset 4, -8
- 518              		.cfi_offset 14, -4
-  38:Core/Src/DS18B20.c **** 		return 0xffff; //error, no response from Thermometer
- 519              		.loc 1 38 2 view .LVU102
-  38:Core/Src/DS18B20.c **** 		return 0xffff; //error, no response from Thermometer
- 520              		.loc 1 38 6 is_stmt 0 view .LVU103
- 521 0002 FFF7FEFF 		bl	DS18B20_Initialize
- 522              	.LVL46:
-  38:Core/Src/DS18B20.c **** 		return 0xffff; //error, no response from Thermometer
- 523              		.loc 1 38 5 view .LVU104
- 524 0006 10B1     		cbz	r0, .L45
-  39:Core/Src/DS18B20.c **** 	} else {
- 525              		.loc 1 39 10 view .LVU105
- 526 0008 9FED170A 		vldr.32	s0, .L47
- 527              	.L40:
+ 512              		.loc 1 112 2 view .LVU90
+ 513              	.LVL36:
+ 113:Core/Src/DS18B20.c **** 	for (int i = 0; i < 8; i++)
+ 514              		.loc 1 113 2 view .LVU91
+ 515 0002 FFF7FEFF 		bl	Set_Pin_Input_Defualt
+ 516              	.LVL37:
+ 114:Core/Src/DS18B20.c **** 	{
+ 517              		.loc 1 114 2 view .LVU92
+ 518              	.LBB3:
+ 114:Core/Src/DS18B20.c **** 	{
+ 519              		.loc 1 114 7 view .LVU93
+ 114:Core/Src/DS18B20.c **** 	{
+ 520              		.loc 1 114 11 is_stmt 0 view .LVU94
+ 521 0006 0024     		movs	r4, #0
+ 522              	.LBE3:
+ 112:Core/Src/DS18B20.c **** 	Set_Pin_Input_Defualt();
+ 523              		.loc 1 112 10 view .LVU95
+ 524 0008 2646     		mov	r6, r4
+ 525              	.LBB4:
+ 114:Core/Src/DS18B20.c **** 	{
+ 526              		.loc 1 114 2 view .LVU96
+ 527 000a 03E0     		b	.L45
+ 528              	.LVL38:
+ 529              	.L46:
+ 125:Core/Src/DS18B20.c **** 	}
+ 530              		.loc 1 125 3 is_stmt 1 discriminator 2 view .LVU97
+ 531 000c 3220     		movs	r0, #50
+ 532 000e FFF7FEFF 		bl	micro_delay
+ 533              	.LVL39:
+ 114:Core/Src/DS18B20.c **** 	{
+ 534              		.loc 1 114 26 discriminator 2 view .LVU98
+ 535 0012 0134     		adds	r4, r4, #1
+ 536              	.LVL40:
+ 537              	.L45:
+ 114:Core/Src/DS18B20.c **** 	{
+ 538              		.loc 1 114 20 discriminator 1 view .LVU99
+ 539 0014 072C     		cmp	r4, #7
+ 540 0016 1ADC     		bgt	.L49
+ 116:Core/Src/DS18B20.c **** 		HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
+ 541              		.loc 1 116 3 view .LVU100
+ 542 0018 FFF7FEFF 		bl	Set_Pin_Output_Defualt
+ 543              	.LVL41:
+ 117:Core/Src/DS18B20.c **** 		micro_delay(2);
+ 544              		.loc 1 117 3 view .LVU101
+ 545 001c 0D4D     		ldr	r5, .L50
+ 546 001e 0022     		movs	r2, #0
+ 547 0020 0121     		movs	r1, #1
+ 548 0022 2846     		mov	r0, r5
+ 549 0024 FFF7FEFF 		bl	HAL_GPIO_WritePin
+ 550              	.LVL42:
+ 118:Core/Src/DS18B20.c **** 		Set_Pin_Input_Defualt();
+ 551              		.loc 1 118 3 view .LVU102
+ 552 0028 0220     		movs	r0, #2
+ 553 002a FFF7FEFF 		bl	micro_delay
+ 554              	.LVL43:
+ 119:Core/Src/DS18B20.c **** 		micro_delay(10);
+ 555              		.loc 1 119 3 view .LVU103
+ARM GAS  /tmp/ccnQlOiU.s 			page 16
+
+
+ 556 002e FFF7FEFF 		bl	Set_Pin_Input_Defualt
+ 557              	.LVL44:
+ 120:Core/Src/DS18B20.c **** 		if (HAL_GPIO_ReadPin(DS18B20_Port, DS18B20_Pin))
+ 558              		.loc 1 120 3 view .LVU104
+ 559 0032 0A20     		movs	r0, #10
+ 560 0034 FFF7FEFF 		bl	micro_delay
+ 561              	.LVL45:
+ 121:Core/Src/DS18B20.c **** 		{
+ 562              		.loc 1 121 3 view .LVU105
+ 121:Core/Src/DS18B20.c **** 		{
+ 563              		.loc 1 121 7 is_stmt 0 view .LVU106
+ 564 0038 0121     		movs	r1, #1
+ 565 003a 2846     		mov	r0, r5
+ 566 003c FFF7FEFF 		bl	HAL_GPIO_ReadPin
+ 567              	.LVL46:
+ 121:Core/Src/DS18B20.c **** 		{
+ 568              		.loc 1 121 6 view .LVU107
+ 569 0040 0028     		cmp	r0, #0
+ 570 0042 E3D0     		beq	.L46
+ 123:Core/Src/DS18B20.c **** 		}
+ 571              		.loc 1 123 4 is_stmt 1 view .LVU108
+ 123:Core/Src/DS18B20.c **** 		}
+ 572              		.loc 1 123 14 is_stmt 0 view .LVU109
+ 573 0044 0123     		movs	r3, #1
+ 574 0046 A340     		lsls	r3, r3, r4
+ 123:Core/Src/DS18B20.c **** 		}
+ 575              		.loc 1 123 9 view .LVU110
+ 576 0048 1E43     		orrs	r6, r6, r3
+ 577              	.LVL47:
+ 123:Core/Src/DS18B20.c **** 		}
+ 578              		.loc 1 123 9 view .LVU111
+ 579 004a F6B2     		uxtb	r6, r6
+ 580              	.LVL48:
+ 123:Core/Src/DS18B20.c **** 		}
+ 581              		.loc 1 123 9 view .LVU112
+ 582 004c DEE7     		b	.L46
+ 583              	.L49:
+ 123:Core/Src/DS18B20.c **** 		}
+ 584              		.loc 1 123 9 view .LVU113
+ 585              	.LBE4:
+ 127:Core/Src/DS18B20.c **** }
+ 586              		.loc 1 127 2 is_stmt 1 view .LVU114
+ 128:Core/Src/DS18B20.c **** 
+ 587              		.loc 1 128 1 is_stmt 0 view .LVU115
+ 588 004e 3046     		mov	r0, r6
+ 589 0050 70BD     		pop	{r4, r5, r6, pc}
+ 590              	.LVL49:
+ 591              	.L51:
+ 128:Core/Src/DS18B20.c **** 
+ 592              		.loc 1 128 1 view .LVU116
+ 593 0052 00BF     		.align	2
+ 594              	.L50:
+ 595 0054 00080240 		.word	1073874944
+ 596              		.cfi_endproc
+ 597              	.LFE134:
+ 599              		.section	.text.DS18B20_Read_Temperature,"ax",%progbits
+ 600              		.align	1
+ARM GAS  /tmp/ccnQlOiU.s 			page 17
+
+
+ 601              		.global	DS18B20_Read_Temperature
+ 602              		.syntax unified
+ 603              		.thumb
+ 604              		.thumb_func
+ 605              		.fpu fpv4-sp-d16
+ 607              	DS18B20_Read_Temperature:
+ 608              	.LFB131:
+  49:Core/Src/DS18B20.c **** 	if (DS18B20_Initialize())
+ 609              		.loc 1 49 1 is_stmt 1 view -0
+ 610              		.cfi_startproc
+ 611              		@ args = 0, pretend = 0, frame = 0
+ 612              		@ frame_needed = 0, uses_anonymous_args = 0
+ 613 0000 10B5     		push	{r4, lr}
+ 614              	.LCFI14:
+ 615              		.cfi_def_cfa_offset 8
+ 616              		.cfi_offset 4, -8
+ 617              		.cfi_offset 14, -4
+  50:Core/Src/DS18B20.c **** 	{
+ 618              		.loc 1 50 2 view .LVU118
+  50:Core/Src/DS18B20.c **** 	{
+ 619              		.loc 1 50 6 is_stmt 0 view .LVU119
+ 620 0002 FFF7FEFF 		bl	DS18B20_Initialize
+ 621              	.LVL50:
+  50:Core/Src/DS18B20.c **** 	{
+ 622              		.loc 1 50 5 view .LVU120
+ 623 0006 10B1     		cbz	r0, .L57
+  52:Core/Src/DS18B20.c **** 	}
+ 624              		.loc 1 52 10 view .LVU121
+ 625 0008 9FED170A 		vldr.32	s0, .L59
+ 626              	.L52:
+  77:Core/Src/DS18B20.c **** 
+ 627              		.loc 1 77 1 view .LVU122
+ 628 000c 10BD     		pop	{r4, pc}
+ 629              	.L57:
+  56:Core/Src/DS18B20.c **** 		DS18B20_Write_Byte(SKIP_ROM);  //Single device connected
+ 630              		.loc 1 56 3 is_stmt 1 view .LVU123
+ 631 000e 0120     		movs	r0, #1
+ 632 0010 FFF7FEFF 		bl	HAL_Delay
+ 633              	.LVL51:
+  57:Core/Src/DS18B20.c **** 		DS18B20_Write_Byte(CONVERT_T); //Start temperature conversion
+ 634              		.loc 1 57 3 view .LVU124
+ 635 0014 CC20     		movs	r0, #204
+ 636 0016 FFF7FEFF 		bl	DS18B20_Write_Byte
+ 637              	.LVL52:
+  58:Core/Src/DS18B20.c **** 
+ 638              		.loc 1 58 3 view .LVU125
+ 639 001a 4420     		movs	r0, #68
+ 640 001c FFF7FEFF 		bl	DS18B20_Write_Byte
+ 641              	.LVL53:
   60:Core/Src/DS18B20.c **** 
- 528              		.loc 1 60 1 view .LVU106
- 529 000c 10BD     		pop	{r4, pc}
- 530              	.L45:
-  41:Core/Src/DS18B20.c **** 		DS18B20_Write_Byte(SKIP_ROM);	//Single device connected
- 531              		.loc 1 41 3 is_stmt 1 view .LVU107
- 532 000e 0120     		movs	r0, #1
- 533 0010 FFF7FEFF 		bl	HAL_Delay
- 534              	.LVL47:
-  42:Core/Src/DS18B20.c **** 		DS18B20_Write_Byte(CONVERT_T);	//Start temperature conversion
- 535              		.loc 1 42 3 view .LVU108
- 536 0014 CC20     		movs	r0, #204
- 537 0016 FFF7FEFF 		bl	DS18B20_Write_Byte
- 538              	.LVL48:
-  43:Core/Src/DS18B20.c **** 
- 539              		.loc 1 43 3 view .LVU109
- 540 001a 4420     		movs	r0, #68
- 541 001c FFF7FEFF 		bl	DS18B20_Write_Byte
- 542              	.LVL49:
-  45:Core/Src/DS18B20.c **** 
- 543              		.loc 1 45 3 view .LVU110
- 544 0020 4FF44870 		mov	r0, #800
- 545 0024 FFF7FEFF 		bl	HAL_Delay
- 546              	.LVL50:
-  47:Core/Src/DS18B20.c **** 			return 0xffff; //error, device didn't respond
- 547              		.loc 1 47 3 view .LVU111
-  47:Core/Src/DS18B20.c **** 			return 0xffff; //error, device didn't respond
- 548              		.loc 1 47 7 is_stmt 0 view .LVU112
- 549 0028 FFF7FEFF 		bl	DS18B20_Initialize
- 550              	.LVL51:
-  47:Core/Src/DS18B20.c **** 			return 0xffff; //error, device didn't respond
- 551              		.loc 1 47 6 view .LVU113
- 552 002c 10B1     		cbz	r0, .L46
-  48:Core/Src/DS18B20.c **** 		} else {
- 553              		.loc 1 48 11 view .LVU114
- 554 002e 9FED0E0A 		vldr.32	s0, .L47
- 555 0032 EBE7     		b	.L40
- 556              	.L46:
- 557              	.LBB5:
-  50:Core/Src/DS18B20.c **** 			DS18B20_Write_Byte(SKIP_ROM); //Single device connected
- 558              		.loc 1 50 4 is_stmt 1 view .LVU115
-ARM GAS  /tmp/ccTqHLFx.s 			page 15
+ 642              		.loc 1 60 3 view .LVU126
+ 643 0020 4FF44870 		mov	r0, #800
+ 644 0024 FFF7FEFF 		bl	HAL_Delay
+ 645              	.LVL54:
+  62:Core/Src/DS18B20.c **** 		{
+ 646              		.loc 1 62 3 view .LVU127
+  62:Core/Src/DS18B20.c **** 		{
+ARM GAS  /tmp/ccnQlOiU.s 			page 18
 
 
- 559 0034 0120     		movs	r0, #1
- 560 0036 FFF7FEFF 		bl	HAL_Delay
- 561              	.LVL52:
-  51:Core/Src/DS18B20.c **** 			DS18B20_Write_Byte(READ_SCRATCHPAD); //Get temperature from the device
- 562              		.loc 1 51 4 view .LVU116
- 563 003a CC20     		movs	r0, #204
- 564 003c FFF7FEFF 		bl	DS18B20_Write_Byte
- 565              	.LVL53:
-  52:Core/Src/DS18B20.c **** 			uint8_t tmp1 = DS18B20_Read_Byte();
- 566              		.loc 1 52 4 view .LVU117
- 567 0040 BE20     		movs	r0, #190
- 568 0042 FFF7FEFF 		bl	DS18B20_Write_Byte
- 569              	.LVL54:
-  53:Core/Src/DS18B20.c **** 			uint8_t tmp2 = DS18B20_Read_Byte();
- 570              		.loc 1 53 4 view .LVU118
-  53:Core/Src/DS18B20.c **** 			uint8_t tmp2 = DS18B20_Read_Byte();
- 571              		.loc 1 53 19 is_stmt 0 view .LVU119
- 572 0046 FFF7FEFF 		bl	DS18B20_Read_Byte
- 573              	.LVL55:
- 574 004a 0446     		mov	r4, r0
- 575              	.LVL56:
-  54:Core/Src/DS18B20.c **** 			uint16_t temperature = tmp1 | (tmp2 << 8);
- 576              		.loc 1 54 4 is_stmt 1 view .LVU120
-  54:Core/Src/DS18B20.c **** 			uint16_t temperature = tmp1 | (tmp2 << 8);
- 577              		.loc 1 54 19 is_stmt 0 view .LVU121
- 578 004c FFF7FEFF 		bl	DS18B20_Read_Byte
- 579              	.LVL57:
-  55:Core/Src/DS18B20.c **** 			return (float) temperature / 16;	//return float
- 580              		.loc 1 55 4 is_stmt 1 view .LVU122
-  55:Core/Src/DS18B20.c **** 			return (float) temperature / 16;	//return float
- 581              		.loc 1 55 32 is_stmt 0 view .LVU123
- 582 0050 44EA0024 		orr	r4, r4, r0, lsl #8
- 583              	.LVL58:
-  55:Core/Src/DS18B20.c **** 			return (float) temperature / 16;	//return float
- 584              		.loc 1 55 13 view .LVU124
- 585 0054 A3B2     		uxth	r3, r4
- 586 0056 00EE103A 		vmov	s0, r3	@ int
- 587              	.LVL59:
-  56:Core/Src/DS18B20.c **** 		}
- 588              		.loc 1 56 4 is_stmt 1 view .LVU125
-  56:Core/Src/DS18B20.c **** 		}
- 589              		.loc 1 56 11 is_stmt 0 view .LVU126
- 590 005a B8EE400A 		vcvt.f32.u32	s0, s0
- 591              	.LVL60:
-  56:Core/Src/DS18B20.c **** 		}
- 592              		.loc 1 56 31 view .LVU127
- 593 005e DFED037A 		vldr.32	s15, .L47+4
- 594 0062 20EE270A 		vmul.f32	s0, s0, s15
- 595 0066 D1E7     		b	.L40
- 596              	.L48:
- 597              		.align	2
- 598              	.L47:
- 599 0068 00FF7F47 		.word	1199570688
- 600 006c 0000803D 		.word	1031798784
- 601              	.LBE5:
- 602              		.cfi_endproc
- 603              	.LFE131:
-ARM GAS  /tmp/ccTqHLFx.s 			page 16
+ 647              		.loc 1 62 7 is_stmt 0 view .LVU128
+ 648 0028 FFF7FEFF 		bl	DS18B20_Initialize
+ 649              	.LVL55:
+  62:Core/Src/DS18B20.c **** 		{
+ 650              		.loc 1 62 6 view .LVU129
+ 651 002c 10B1     		cbz	r0, .L58
+  64:Core/Src/DS18B20.c **** 		}
+ 652              		.loc 1 64 11 view .LVU130
+ 653 002e 9FED0E0A 		vldr.32	s0, .L59
+ 654 0032 EBE7     		b	.L52
+ 655              	.L58:
+ 656              	.LBB5:
+  68:Core/Src/DS18B20.c **** 			DS18B20_Write_Byte(SKIP_ROM);		 //Single device connected
+ 657              		.loc 1 68 4 is_stmt 1 view .LVU131
+ 658 0034 0120     		movs	r0, #1
+ 659 0036 FFF7FEFF 		bl	HAL_Delay
+ 660              	.LVL56:
+  69:Core/Src/DS18B20.c **** 			DS18B20_Write_Byte(READ_SCRATCHPAD); //Get temperature from the device
+ 661              		.loc 1 69 4 view .LVU132
+ 662 003a CC20     		movs	r0, #204
+ 663 003c FFF7FEFF 		bl	DS18B20_Write_Byte
+ 664              	.LVL57:
+  70:Core/Src/DS18B20.c **** 			uint8_t tmp1 = DS18B20_Read_Byte();
+ 665              		.loc 1 70 4 view .LVU133
+ 666 0040 BE20     		movs	r0, #190
+ 667 0042 FFF7FEFF 		bl	DS18B20_Write_Byte
+ 668              	.LVL58:
+  71:Core/Src/DS18B20.c **** 			uint8_t tmp2 = DS18B20_Read_Byte();
+ 669              		.loc 1 71 4 view .LVU134
+  71:Core/Src/DS18B20.c **** 			uint8_t tmp2 = DS18B20_Read_Byte();
+ 670              		.loc 1 71 19 is_stmt 0 view .LVU135
+ 671 0046 FFF7FEFF 		bl	DS18B20_Read_Byte
+ 672              	.LVL59:
+ 673 004a 0446     		mov	r4, r0
+ 674              	.LVL60:
+  72:Core/Src/DS18B20.c **** 			uint16_t temperature = tmp1 | (tmp2 << 8);
+ 675              		.loc 1 72 4 is_stmt 1 view .LVU136
+  72:Core/Src/DS18B20.c **** 			uint16_t temperature = tmp1 | (tmp2 << 8);
+ 676              		.loc 1 72 19 is_stmt 0 view .LVU137
+ 677 004c FFF7FEFF 		bl	DS18B20_Read_Byte
+ 678              	.LVL61:
+  73:Core/Src/DS18B20.c **** 			return (float)temperature / 16; //return float
+ 679              		.loc 1 73 4 is_stmt 1 view .LVU138
+  73:Core/Src/DS18B20.c **** 			return (float)temperature / 16; //return float
+ 680              		.loc 1 73 32 is_stmt 0 view .LVU139
+ 681 0050 44EA0024 		orr	r4, r4, r0, lsl #8
+ 682              	.LVL62:
+  73:Core/Src/DS18B20.c **** 			return (float)temperature / 16; //return float
+ 683              		.loc 1 73 13 view .LVU140
+ 684 0054 A3B2     		uxth	r3, r4
+ 685 0056 00EE103A 		vmov	s0, r3	@ int
+ 686              	.LVL63:
+  74:Core/Src/DS18B20.c **** 		}
+ 687              		.loc 1 74 4 is_stmt 1 view .LVU141
+  74:Core/Src/DS18B20.c **** 		}
+ 688              		.loc 1 74 11 is_stmt 0 view .LVU142
+ 689 005a B8EE400A 		vcvt.f32.u32	s0, s0
+ARM GAS  /tmp/ccnQlOiU.s 			page 19
 
 
- 605              		.section	.text.DS18B20_Read_Temperature_NB,"ax",%progbits
- 606              		.align	1
- 607              		.global	DS18B20_Read_Temperature_NB
- 608              		.syntax unified
- 609              		.thumb
- 610              		.thumb_func
- 611              		.fpu fpv4-sp-d16
- 613              	DS18B20_Read_Temperature_NB:
- 614              	.LFB132:
-  62:Core/Src/DS18B20.c **** 	uint8_t tmp1 ;
- 615              		.loc 1 62 37 is_stmt 1 view -0
- 616              		.cfi_startproc
- 617              		@ args = 0, pretend = 0, frame = 0
- 618              		@ frame_needed = 0, uses_anonymous_args = 0
- 619 0000 10B5     		push	{r4, lr}
- 620              	.LCFI12:
- 621              		.cfi_def_cfa_offset 8
- 622              		.cfi_offset 4, -8
- 623              		.cfi_offset 14, -4
-  63:Core/Src/DS18B20.c **** 	uint8_t tmp2 ;
- 624              		.loc 1 63 2 view .LVU129
-  64:Core/Src/DS18B20.c **** 	uint16_t temperature;
- 625              		.loc 1 64 2 view .LVU130
-  65:Core/Src/DS18B20.c **** 
- 626              		.loc 1 65 2 view .LVU131
-  68:Core/Src/DS18B20.c **** 	case 0:
- 627              		.loc 1 68 2 view .LVU132
- 628 0002 244B     		ldr	r3, .L61
- 629 0004 1B68     		ldr	r3, [r3]
- 630 0006 032B     		cmp	r3, #3
- 631 0008 39D8     		bhi	.L50
- 632 000a DFE803F0 		tbb	[pc, r3]
- 633              	.L52:
- 634 000e 02       		.byte	(.L55-.L52)/2
- 635 000f 0C       		.byte	(.L54-.L52)/2
- 636 0010 18       		.byte	(.L53-.L52)/2
- 637 0011 21       		.byte	(.L51-.L52)/2
- 638              		.p2align 1
- 639              	.L55:
-  70:Core/Src/DS18B20.c **** 			return 0xffff; //error, no response from Thermometer
- 640              		.loc 1 70 3 view .LVU133
-  70:Core/Src/DS18B20.c **** 			return 0xffff; //error, no response from Thermometer
- 641              		.loc 1 70 7 is_stmt 0 view .LVU134
- 642 0012 FFF7FEFF 		bl	DS18B20_Initialize
- 643              	.LVL61:
-  70:Core/Src/DS18B20.c **** 			return 0xffff; //error, no response from Thermometer
- 644              		.loc 1 70 6 view .LVU135
- 645 0016 0028     		cmp	r0, #0
- 646 0018 35D1     		bne	.L58
-  73:Core/Src/DS18B20.c **** 		}
- 647              		.loc 1 73 4 is_stmt 1 view .LVU136
- 648 001a 1F4B     		ldr	r3, .L61+4
- 649 001c 1B68     		ldr	r3, [r3]
- 650 001e 4FF61742 		movw	r2, #64535
- 651 0022 5A62     		str	r2, [r3, #36]
-  75:Core/Src/DS18B20.c **** 	case 1:
- 652              		.loc 1 75 3 view .LVU137
-ARM GAS  /tmp/ccTqHLFx.s 			page 17
+ 690              	.LVL64:
+  74:Core/Src/DS18B20.c **** 		}
+ 691              		.loc 1 74 30 view .LVU143
+ 692 005e DFED037A 		vldr.32	s15, .L59+4
+ 693 0062 20EE270A 		vmul.f32	s0, s0, s15
+ 694 0066 D1E7     		b	.L52
+ 695              	.L60:
+ 696              		.align	2
+ 697              	.L59:
+ 698 0068 00FF7F47 		.word	1199570688
+ 699 006c 0000803D 		.word	1031798784
+ 700              	.LBE5:
+ 701              		.cfi_endproc
+ 702              	.LFE131:
+ 704              		.section	.text.Read_Temperature_Stage_3,"ax",%progbits
+ 705              		.align	1
+ 706              		.syntax unified
+ 707              		.thumb
+ 708              		.thumb_func
+ 709              		.fpu fpv4-sp-d16
+ 711              	Read_Temperature_Stage_3:
+ 712              	.LFB139:
+ 199:Core/Src/DS18B20.c **** 	uint8_t tmp1;
+ 713              		.loc 1 199 1 is_stmt 1 view -0
+ 714              		.cfi_startproc
+ 715              		@ args = 0, pretend = 0, frame = 0
+ 716              		@ frame_needed = 0, uses_anonymous_args = 0
+ 717 0000 10B5     		push	{r4, lr}
+ 718              	.LCFI15:
+ 719              		.cfi_def_cfa_offset 8
+ 720              		.cfi_offset 4, -8
+ 721              		.cfi_offset 14, -4
+ 200:Core/Src/DS18B20.c **** 	uint8_t tmp2;
+ 722              		.loc 1 200 2 view .LVU145
+ 201:Core/Src/DS18B20.c **** 	DS18B20_Write_Byte(SKIP_ROM);		 //Single device connected
+ 723              		.loc 1 201 2 view .LVU146
+ 202:Core/Src/DS18B20.c **** 	DS18B20_Write_Byte(READ_SCRATCHPAD); //Get temperature from the device
+ 724              		.loc 1 202 2 view .LVU147
+ 725 0002 CC20     		movs	r0, #204
+ 726 0004 FFF7FEFF 		bl	DS18B20_Write_Byte
+ 727              	.LVL65:
+ 203:Core/Src/DS18B20.c **** 	tmp1 = DS18B20_Read_Byte();
+ 728              		.loc 1 203 2 view .LVU148
+ 729 0008 BE20     		movs	r0, #190
+ 730 000a FFF7FEFF 		bl	DS18B20_Write_Byte
+ 731              	.LVL66:
+ 204:Core/Src/DS18B20.c **** 	tmp2 = DS18B20_Read_Byte();
+ 732              		.loc 1 204 2 view .LVU149
+ 204:Core/Src/DS18B20.c **** 	tmp2 = DS18B20_Read_Byte();
+ 733              		.loc 1 204 9 is_stmt 0 view .LVU150
+ 734 000e FFF7FEFF 		bl	DS18B20_Read_Byte
+ 735              	.LVL67:
+ 736 0012 0446     		mov	r4, r0
+ 737              	.LVL68:
+ 205:Core/Src/DS18B20.c **** 	temperature = (tmp1 | (tmp2 << 8));
+ 738              		.loc 1 205 2 is_stmt 1 view .LVU151
+ 205:Core/Src/DS18B20.c **** 	temperature = (tmp1 | (tmp2 << 8));
+ARM GAS  /tmp/ccnQlOiU.s 			page 20
 
 
- 653 0024 0AE0     		b	.L49
- 654              	.L54:
-  77:Core/Src/DS18B20.c **** 		DS18B20_Write_Byte(CONVERT_T);	//Start temperature conversion
- 655              		.loc 1 77 3 view .LVU138
- 656 0026 CC20     		movs	r0, #204
- 657 0028 FFF7FEFF 		bl	DS18B20_Write_Byte
- 658              	.LVL62:
-  78:Core/Src/DS18B20.c **** 		__HAL_TIM_SET_COUNTER(&htim7, 0xffff - 8000);
- 659              		.loc 1 78 3 view .LVU139
- 660 002c 4420     		movs	r0, #68
- 661 002e FFF7FEFF 		bl	DS18B20_Write_Byte
- 662              	.LVL63:
-  79:Core/Src/DS18B20.c **** 		break;
- 663              		.loc 1 79 3 view .LVU140
- 664 0032 194B     		ldr	r3, .L61+4
- 665 0034 1B68     		ldr	r3, [r3]
- 666 0036 4EF2BF02 		movw	r2, #57535
- 667 003a 5A62     		str	r2, [r3, #36]
-  80:Core/Src/DS18B20.c **** 	case 2:
- 668              		.loc 1 80 3 view .LVU141
- 669              	.L49:
- 100:Core/Src/DS18B20.c **** 
- 670              		.loc 1 100 1 is_stmt 0 view .LVU142
- 671 003c 10BD     		pop	{r4, pc}
- 672              	.L53:
-  82:Core/Src/DS18B20.c **** 			return 0xffff; //error, device didn't respond
- 673              		.loc 1 82 3 is_stmt 1 view .LVU143
-  82:Core/Src/DS18B20.c **** 			return 0xffff; //error, device didn't respond
- 674              		.loc 1 82 7 is_stmt 0 view .LVU144
- 675 003e FFF7FEFF 		bl	DS18B20_Initialize
- 676              	.LVL64:
-  82:Core/Src/DS18B20.c **** 			return 0xffff; //error, device didn't respond
- 677              		.loc 1 82 6 view .LVU145
- 678 0042 18BB     		cbnz	r0, .L59
-  85:Core/Src/DS18B20.c **** 		}
- 679              		.loc 1 85 4 is_stmt 1 view .LVU146
- 680 0044 144B     		ldr	r3, .L61+4
- 681 0046 1B68     		ldr	r3, [r3]
- 682 0048 4FF61742 		movw	r2, #64535
- 683 004c 5A62     		str	r2, [r3, #36]
-  87:Core/Src/DS18B20.c **** 	case 3:
- 684              		.loc 1 87 3 view .LVU147
- 685 004e F5E7     		b	.L49
- 686              	.L51:
-  89:Core/Src/DS18B20.c **** 		DS18B20_Write_Byte(READ_SCRATCHPAD); //Get temperature from the device
- 687              		.loc 1 89 3 view .LVU148
- 688 0050 CC20     		movs	r0, #204
- 689 0052 FFF7FEFF 		bl	DS18B20_Write_Byte
- 690              	.LVL65:
-  90:Core/Src/DS18B20.c **** 		tmp1 = DS18B20_Read_Byte();
- 691              		.loc 1 90 3 view .LVU149
- 692 0056 BE20     		movs	r0, #190
- 693 0058 FFF7FEFF 		bl	DS18B20_Write_Byte
- 694              	.LVL66:
-  91:Core/Src/DS18B20.c **** 		tmp2 = DS18B20_Read_Byte();
- 695              		.loc 1 91 3 view .LVU150
-  91:Core/Src/DS18B20.c **** 		tmp2 = DS18B20_Read_Byte();
-ARM GAS  /tmp/ccTqHLFx.s 			page 18
+ 739              		.loc 1 205 9 is_stmt 0 view .LVU152
+ 740 0014 FFF7FEFF 		bl	DS18B20_Read_Byte
+ 741              	.LVL69:
+ 206:Core/Src/DS18B20.c **** }
+ 742              		.loc 1 206 2 is_stmt 1 view .LVU153
+ 206:Core/Src/DS18B20.c **** }
+ 743              		.loc 1 206 22 is_stmt 0 view .LVU154
+ 744 0018 44EA0024 		orr	r4, r4, r0, lsl #8
+ 745              	.LVL70:
+ 206:Core/Src/DS18B20.c **** }
+ 746              		.loc 1 206 14 view .LVU155
+ 747 001c 014B     		ldr	r3, .L63
+ 748 001e 1C80     		strh	r4, [r3]	@ movhi
+ 207:Core/Src/DS18B20.c **** 
+ 749              		.loc 1 207 1 view .LVU156
+ 750 0020 10BD     		pop	{r4, pc}
+ 751              	.L64:
+ 752 0022 00BF     		.align	2
+ 753              	.L63:
+ 754 0024 00000000 		.word	.LANCHOR0
+ 755              		.cfi_endproc
+ 756              	.LFE139:
+ 758              		.section	.text.Read_Temperature_State_Machine_Controler,"ax",%progbits
+ 759              		.align	1
+ 760              		.syntax unified
+ 761              		.thumb
+ 762              		.thumb_func
+ 763              		.fpu fpv4-sp-d16
+ 765              	Read_Temperature_State_Machine_Controler:
+ 766              	.LFB135:
+ 133:Core/Src/DS18B20.c **** 	switch (DS18B20_state)
+ 767              		.loc 1 133 1 is_stmt 1 view -0
+ 768              		.cfi_startproc
+ 769              		@ args = 0, pretend = 0, frame = 0
+ 770              		@ frame_needed = 0, uses_anonymous_args = 0
+ 771 0000 08B5     		push	{r3, lr}
+ 772              	.LCFI16:
+ 773              		.cfi_def_cfa_offset 8
+ 774              		.cfi_offset 3, -8
+ 775              		.cfi_offset 14, -4
+ 134:Core/Src/DS18B20.c **** 	{
+ 776              		.loc 1 134 2 view .LVU158
+ 777 0002 284B     		ldr	r3, .L82
+ 778 0004 1B68     		ldr	r3, [r3]
+ 779 0006 032B     		cmp	r3, #3
+ 780 0008 45D8     		bhi	.L72
+ 781 000a DFE803F0 		tbb	[pc, r3]
+ 782              	.L68:
+ 783 000e 02       		.byte	(.L71-.L68)/2
+ 784 000f 0F       		.byte	(.L70-.L68)/2
+ 785 0010 22       		.byte	(.L69-.L68)/2
+ 786 0011 36       		.byte	(.L67-.L68)/2
+ 787              		.p2align 1
+ 788              	.L71:
+ 137:Core/Src/DS18B20.c **** 		{
+ 789              		.loc 1 137 3 view .LVU159
+ 137:Core/Src/DS18B20.c **** 		{
+ARM GAS  /tmp/ccnQlOiU.s 			page 21
 
 
- 696              		.loc 1 91 10 is_stmt 0 view .LVU151
- 697 005c FFF7FEFF 		bl	DS18B20_Read_Byte
- 698              	.LVL67:
- 699 0060 0446     		mov	r4, r0
- 700              	.LVL68:
-  92:Core/Src/DS18B20.c **** 		temperature = tmp1 | (tmp2 << 8);
- 701              		.loc 1 92 3 is_stmt 1 view .LVU152
-  92:Core/Src/DS18B20.c **** 		temperature = tmp1 | (tmp2 << 8);
- 702              		.loc 1 92 10 is_stmt 0 view .LVU153
- 703 0062 FFF7FEFF 		bl	DS18B20_Read_Byte
- 704              	.LVL69:
-  93:Core/Src/DS18B20.c **** 		return (float) temperature / 16;	//return float
- 705              		.loc 1 93 3 is_stmt 1 view .LVU154
-  93:Core/Src/DS18B20.c **** 		return (float) temperature / 16;	//return float
- 706              		.loc 1 93 22 is_stmt 0 view .LVU155
- 707 0066 44EA0024 		orr	r4, r4, r0, lsl #8
- 708              	.LVL70:
-  93:Core/Src/DS18B20.c **** 		return (float) temperature / 16;	//return float
- 709              		.loc 1 93 15 view .LVU156
- 710 006a A3B2     		uxth	r3, r4
- 711 006c 00EE103A 		vmov	s0, r3	@ int
- 712              	.LVL71:
-  94:Core/Src/DS18B20.c **** 	default:
- 713              		.loc 1 94 3 is_stmt 1 view .LVU157
-  94:Core/Src/DS18B20.c **** 	default:
- 714              		.loc 1 94 10 is_stmt 0 view .LVU158
- 715 0070 B8EE400A 		vcvt.f32.u32	s0, s0
- 716              	.LVL72:
-  94:Core/Src/DS18B20.c **** 	default:
- 717              		.loc 1 94 30 view .LVU159
- 718 0074 DFED097A 		vldr.32	s15, .L61+8
- 719 0078 20EE270A 		vmul.f32	s0, s0, s15
- 720 007c DEE7     		b	.L49
- 721              	.LVL73:
- 722              	.L50:
-  96:Core/Src/DS18B20.c **** 		break;
- 723              		.loc 1 96 3 is_stmt 1 view .LVU160
-  96:Core/Src/DS18B20.c **** 		break;
- 724              		.loc 1 96 16 is_stmt 0 view .LVU161
- 725 007e 054B     		ldr	r3, .L61
- 726 0080 0022     		movs	r2, #0
- 727 0082 1A60     		str	r2, [r3]
-  97:Core/Src/DS18B20.c **** 	}
- 728              		.loc 1 97 3 is_stmt 1 view .LVU162
- 100:Core/Src/DS18B20.c **** 
- 729              		.loc 1 100 1 is_stmt 0 view .LVU163
- 730 0084 DAE7     		b	.L49
- 731              	.L58:
-  71:Core/Src/DS18B20.c **** 		} else {
- 732              		.loc 1 71 11 view .LVU164
- 733 0086 9FED060A 		vldr.32	s0, .L61+12
- 734 008a D7E7     		b	.L49
- 735              	.L59:
-  83:Core/Src/DS18B20.c **** 		} else {
- 736              		.loc 1 83 11 view .LVU165
- 737 008c 9FED040A 		vldr.32	s0, .L61+12
- 738 0090 D4E7     		b	.L49
-ARM GAS  /tmp/ccTqHLFx.s 			page 19
+ 790              		.loc 1 137 7 is_stmt 0 view .LVU160
+ 791 0012 FFF7FEFF 		bl	Read_Temperature_Stage_0
+ 792              	.LVL71:
+ 137:Core/Src/DS18B20.c **** 		{
+ 793              		.loc 1 137 6 view .LVU161
+ 794 0016 0028     		cmp	r0, #0
+ 795 0018 3FD1     		bne	.L73
+ 141:Core/Src/DS18B20.c **** 		DS18B20_state++;
+ 796              		.loc 1 141 3 is_stmt 1 view .LVU162
+ 797 001a 234B     		ldr	r3, .L82+4
+ 798 001c 1B68     		ldr	r3, [r3]
+ 799 001e 0022     		movs	r2, #0
+ 800 0020 5A62     		str	r2, [r3, #36]
+ 142:Core/Src/DS18B20.c **** 		break;
+ 801              		.loc 1 142 3 view .LVU163
+ 142:Core/Src/DS18B20.c **** 		break;
+ 802              		.loc 1 142 16 is_stmt 0 view .LVU164
+ 803 0022 204A     		ldr	r2, .L82
+ 804 0024 1368     		ldr	r3, [r2]
+ 805 0026 0133     		adds	r3, r3, #1
+ 806 0028 1360     		str	r3, [r2]
+ 143:Core/Src/DS18B20.c **** 	case 1:
+ 807              		.loc 1 143 3 is_stmt 1 view .LVU165
+ 808 002a 06E0     		b	.L65
+ 809              	.L70:
+ 145:Core/Src/DS18B20.c **** 		{
+ 810              		.loc 1 145 3 view .LVU166
+ 145:Core/Src/DS18B20.c **** 		{
+ 811              		.loc 1 145 7 is_stmt 0 view .LVU167
+ 812 002c 1E4B     		ldr	r3, .L82+4
+ 813 002e 1B68     		ldr	r3, [r3]
+ 814 0030 5B6A     		ldr	r3, [r3, #36]
+ 145:Core/Src/DS18B20.c **** 		{
+ 815              		.loc 1 145 6 view .LVU168
+ 816 0032 B3F57A7F 		cmp	r3, #1000
+ 817 0036 01D2     		bcs	.L79
+ 174:Core/Src/DS18B20.c **** }
+ 818              		.loc 1 174 9 view .LVU169
+ 819 0038 0020     		movs	r0, #0
+ 820              	.L65:
+ 175:Core/Src/DS18B20.c **** 
+ 821              		.loc 1 175 1 view .LVU170
+ 822 003a 08BD     		pop	{r3, pc}
+ 823              	.L79:
+ 149:Core/Src/DS18B20.c **** 		__HAL_TIM_SetCounter(&htim7, 0);
+ 824              		.loc 1 149 3 is_stmt 1 view .LVU171
+ 825 003c FFF7FEFF 		bl	Read_Temperature_Stage_1
+ 826              	.LVL72:
+ 150:Core/Src/DS18B20.c **** 		DS18B20_state++;
+ 827              		.loc 1 150 3 view .LVU172
+ 828 0040 194B     		ldr	r3, .L82+4
+ 829 0042 1B68     		ldr	r3, [r3]
+ 830 0044 0020     		movs	r0, #0
+ 831 0046 5862     		str	r0, [r3, #36]
+ 151:Core/Src/DS18B20.c **** 		break;
+ 832              		.loc 1 151 3 view .LVU173
+ 151:Core/Src/DS18B20.c **** 		break;
+ARM GAS  /tmp/ccnQlOiU.s 			page 22
 
 
- 739              	.L62:
- 740 0092 00BF     		.align	2
- 741              	.L61:
- 742 0094 00000000 		.word	.LANCHOR0
- 743 0098 00000000 		.word	htim7
- 744 009c 0000803D 		.word	1031798784
- 745 00a0 00FF7F47 		.word	1199570688
- 746              		.cfi_endproc
- 747              	.LFE132:
- 749              		.global	DS18B20_state
- 750              		.section	.bss.DS18B20_state,"aw",%nobits
- 751              		.align	2
- 752              		.set	.LANCHOR0,. + 0
- 755              	DS18B20_state:
- 756 0000 00000000 		.space	4
- 757              		.text
- 758              	.Letext0:
- 759              		.file 2 "/usr/arm-none-eabi/include/machine/_default_types.h"
- 760              		.file 3 "/usr/arm-none-eabi/include/sys/_stdint.h"
- 761              		.file 4 "Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f446xx.h"
- 762              		.file 5 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_def.h"
- 763              		.file 6 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_gpio.h"
- 764              		.file 7 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_dma.h"
- 765              		.file 8 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h"
- 766              		.file 9 "Core/Inc/tim.h"
- 767              		.file 10 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h"
-ARM GAS  /tmp/ccTqHLFx.s 			page 20
+ 833              		.loc 1 151 16 is_stmt 0 view .LVU174
+ 834 0048 164A     		ldr	r2, .L82
+ 835 004a 1368     		ldr	r3, [r2]
+ 836 004c 0133     		adds	r3, r3, #1
+ 837 004e 1360     		str	r3, [r2]
+ 152:Core/Src/DS18B20.c **** 	case 2:
+ 838              		.loc 1 152 3 is_stmt 1 view .LVU175
+ 839 0050 F3E7     		b	.L65
+ 840              	.L69:
+ 154:Core/Src/DS18B20.c **** 		{
+ 841              		.loc 1 154 3 view .LVU176
+ 154:Core/Src/DS18B20.c **** 		{
+ 842              		.loc 1 154 7 is_stmt 0 view .LVU177
+ 843 0052 154B     		ldr	r3, .L82+4
+ 844 0054 1B68     		ldr	r3, [r3]
+ 845 0056 5B6A     		ldr	r3, [r3, #36]
+ 154:Core/Src/DS18B20.c **** 		{
+ 846              		.loc 1 154 6 view .LVU178
+ 847 0058 B3F5FA5F 		cmp	r3, #8000
+ 848 005c 01D2     		bcs	.L80
+ 174:Core/Src/DS18B20.c **** }
+ 849              		.loc 1 174 9 view .LVU179
+ 850 005e 0020     		movs	r0, #0
+ 851 0060 EBE7     		b	.L65
+ 852              	.L80:
+ 158:Core/Src/DS18B20.c **** 		{
+ 853              		.loc 1 158 3 is_stmt 1 view .LVU180
+ 158:Core/Src/DS18B20.c **** 		{
+ 854              		.loc 1 158 7 is_stmt 0 view .LVU181
+ 855 0062 FFF7FEFF 		bl	Read_Temperature_Stage_2
+ 856              	.LVL73:
+ 158:Core/Src/DS18B20.c **** 		{
+ 857              		.loc 1 158 6 view .LVU182
+ 858 0066 D0B9     		cbnz	r0, .L76
+ 162:Core/Src/DS18B20.c **** 		DS18B20_state++;
+ 859              		.loc 1 162 3 is_stmt 1 view .LVU183
+ 860 0068 0F4B     		ldr	r3, .L82+4
+ 861 006a 1B68     		ldr	r3, [r3]
+ 862 006c 0022     		movs	r2, #0
+ 863 006e 5A62     		str	r2, [r3, #36]
+ 163:Core/Src/DS18B20.c **** 		break;
+ 864              		.loc 1 163 3 view .LVU184
+ 163:Core/Src/DS18B20.c **** 		break;
+ 865              		.loc 1 163 16 is_stmt 0 view .LVU185
+ 866 0070 0C4A     		ldr	r2, .L82
+ 867 0072 1368     		ldr	r3, [r2]
+ 868 0074 0133     		adds	r3, r3, #1
+ 869 0076 1360     		str	r3, [r2]
+ 164:Core/Src/DS18B20.c **** 	case 3:
+ 870              		.loc 1 164 3 is_stmt 1 view .LVU186
+ 871 0078 DFE7     		b	.L65
+ 872              	.L67:
+ 166:Core/Src/DS18B20.c **** 		{
+ 873              		.loc 1 166 3 view .LVU187
+ 166:Core/Src/DS18B20.c **** 		{
+ 874              		.loc 1 166 7 is_stmt 0 view .LVU188
+ 875 007a 0B4B     		ldr	r3, .L82+4
+ARM GAS  /tmp/ccnQlOiU.s 			page 23
+
+
+ 876 007c 1B68     		ldr	r3, [r3]
+ 877 007e 5B6A     		ldr	r3, [r3, #36]
+ 166:Core/Src/DS18B20.c **** 		{
+ 878              		.loc 1 166 6 view .LVU189
+ 879 0080 B3F57A7F 		cmp	r3, #1000
+ 880 0084 01D2     		bcs	.L81
+ 174:Core/Src/DS18B20.c **** }
+ 881              		.loc 1 174 9 view .LVU190
+ 882 0086 0020     		movs	r0, #0
+ 883 0088 D7E7     		b	.L65
+ 884              	.L81:
+ 170:Core/Src/DS18B20.c **** 		DS18B20_state = 0;
+ 885              		.loc 1 170 3 is_stmt 1 view .LVU191
+ 886 008a FFF7FEFF 		bl	Read_Temperature_Stage_3
+ 887              	.LVL74:
+ 171:Core/Src/DS18B20.c **** 		break;
+ 888              		.loc 1 171 3 view .LVU192
+ 171:Core/Src/DS18B20.c **** 		break;
+ 889              		.loc 1 171 17 is_stmt 0 view .LVU193
+ 890 008e 0020     		movs	r0, #0
+ 891 0090 044B     		ldr	r3, .L82
+ 892 0092 1860     		str	r0, [r3]
+ 172:Core/Src/DS18B20.c **** 	}
+ 893              		.loc 1 172 3 is_stmt 1 view .LVU194
+ 894 0094 D1E7     		b	.L65
+ 895              	.L72:
+ 134:Core/Src/DS18B20.c **** 	{
+ 896              		.loc 1 134 2 is_stmt 0 view .LVU195
+ 897 0096 0020     		movs	r0, #0
+ 898 0098 CFE7     		b	.L65
+ 899              	.L73:
+ 139:Core/Src/DS18B20.c **** 		}
+ 900              		.loc 1 139 11 view .LVU196
+ 901 009a 0120     		movs	r0, #1
+ 902 009c CDE7     		b	.L65
+ 903              	.L76:
+ 160:Core/Src/DS18B20.c **** 		}
+ 904              		.loc 1 160 11 view .LVU197
+ 905 009e 0120     		movs	r0, #1
+ 906 00a0 CBE7     		b	.L65
+ 907              	.L83:
+ 908 00a2 00BF     		.align	2
+ 909              	.L82:
+ 910 00a4 00000000 		.word	.LANCHOR1
+ 911 00a8 00000000 		.word	htim7
+ 912              		.cfi_endproc
+ 913              	.LFE135:
+ 915              		.section	.text.DS18B20_Read_Temperature_NB,"ax",%progbits
+ 916              		.align	1
+ 917              		.global	DS18B20_Read_Temperature_NB
+ 918              		.syntax unified
+ 919              		.thumb
+ 920              		.thumb_func
+ 921              		.fpu fpv4-sp-d16
+ 923              	DS18B20_Read_Temperature_NB:
+ 924              	.LFB132:
+  80:Core/Src/DS18B20.c **** 	if (Read_Temperature_State_Machine_Controler())
+ARM GAS  /tmp/ccnQlOiU.s 			page 24
+
+
+ 925              		.loc 1 80 1 is_stmt 1 view -0
+ 926              		.cfi_startproc
+ 927              		@ args = 0, pretend = 0, frame = 0
+ 928              		@ frame_needed = 0, uses_anonymous_args = 0
+ 929 0000 08B5     		push	{r3, lr}
+ 930              	.LCFI17:
+ 931              		.cfi_def_cfa_offset 8
+ 932              		.cfi_offset 3, -8
+ 933              		.cfi_offset 14, -4
+  81:Core/Src/DS18B20.c **** 	{
+ 934              		.loc 1 81 2 view .LVU199
+  81:Core/Src/DS18B20.c **** 	{
+ 935              		.loc 1 81 6 is_stmt 0 view .LVU200
+ 936 0002 FFF7FEFF 		bl	Read_Temperature_State_Machine_Controler
+ 937              	.LVL75:
+  81:Core/Src/DS18B20.c **** 	{
+ 938              		.loc 1 81 5 view .LVU201
+ 939 0006 50B9     		cbnz	r0, .L86
+  85:Core/Src/DS18B20.c **** }
+ 940              		.loc 1 85 2 is_stmt 1 view .LVU202
+  85:Core/Src/DS18B20.c **** }
+ 941              		.loc 1 85 9 is_stmt 0 view .LVU203
+ 942 0008 064B     		ldr	r3, .L88
+ 943 000a 1B88     		ldrh	r3, [r3]
+ 944 000c 00EE103A 		vmov	s0, r3	@ int
+ 945 0010 B8EE400A 		vcvt.f32.u32	s0, s0
+  85:Core/Src/DS18B20.c **** }
+ 946              		.loc 1 85 28 view .LVU204
+ 947 0014 DFED047A 		vldr.32	s15, .L88+4
+ 948 0018 20EE270A 		vmul.f32	s0, s0, s15
+ 949              	.L84:
+  86:Core/Src/DS18B20.c **** 
+ 950              		.loc 1 86 1 view .LVU205
+ 951 001c 08BD     		pop	{r3, pc}
+ 952              	.L86:
+  83:Core/Src/DS18B20.c **** 	}
+ 953              		.loc 1 83 10 view .LVU206
+ 954 001e 9FED030A 		vldr.32	s0, .L88+8
+ 955 0022 FBE7     		b	.L84
+ 956              	.L89:
+ 957              		.align	2
+ 958              	.L88:
+ 959 0024 00000000 		.word	.LANCHOR0
+ 960 0028 0000803D 		.word	1031798784
+ 961 002c 00FF7F47 		.word	1199570688
+ 962              		.cfi_endproc
+ 963              	.LFE132:
+ 965              		.section	.bss.DS18B20_state,"aw",%nobits
+ 966              		.align	2
+ 967              		.set	.LANCHOR1,. + 0
+ 970              	DS18B20_state:
+ 971 0000 00000000 		.space	4
+ 972              		.section	.bss.temperature,"aw",%nobits
+ 973              		.align	1
+ 974              		.set	.LANCHOR0,. + 0
+ 977              	temperature:
+ 978 0000 0000     		.space	2
+ARM GAS  /tmp/ccnQlOiU.s 			page 25
+
+
+ 979              		.text
+ 980              	.Letext0:
+ 981              		.file 2 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 982              		.file 3 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 983              		.file 4 "Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f446xx.h"
+ 984              		.file 5 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_def.h"
+ 985              		.file 6 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_gpio.h"
+ 986              		.file 7 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_dma.h"
+ 987              		.file 8 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h"
+ 988              		.file 9 "Core/Inc/tim.h"
+ 989              		.file 10 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h"
+ARM GAS  /tmp/ccnQlOiU.s 			page 26
 
 
 DEFINED SYMBOLS
                             *ABS*:0000000000000000 DS18B20.c
-     /tmp/ccTqHLFx.s:18     .text.micro_delay:0000000000000000 $t
-     /tmp/ccTqHLFx.s:25     .text.micro_delay:0000000000000000 micro_delay
-     /tmp/ccTqHLFx.s:52     .text.micro_delay:0000000000000010 $d
-     /tmp/ccTqHLFx.s:57     .text.Set_Pin_Output:0000000000000000 $t
-     /tmp/ccTqHLFx.s:63     .text.Set_Pin_Output:0000000000000000 Set_Pin_Output
-     /tmp/ccTqHLFx.s:110    .text.Set_Pin_Output_Defualt:0000000000000000 $t
-     /tmp/ccTqHLFx.s:116    .text.Set_Pin_Output_Defualt:0000000000000000 Set_Pin_Output_Defualt
-     /tmp/ccTqHLFx.s:137    .text.Set_Pin_Output_Defualt:000000000000000c $d
-     /tmp/ccTqHLFx.s:142    .text.Set_Pin_Input:0000000000000000 $t
-     /tmp/ccTqHLFx.s:148    .text.Set_Pin_Input:0000000000000000 Set_Pin_Input
-     /tmp/ccTqHLFx.s:192    .text.Set_Pin_Input_Defualt:0000000000000000 $t
-     /tmp/ccTqHLFx.s:198    .text.Set_Pin_Input_Defualt:0000000000000000 Set_Pin_Input_Defualt
-     /tmp/ccTqHLFx.s:219    .text.Set_Pin_Input_Defualt:000000000000000c $d
-     /tmp/ccTqHLFx.s:224    .text.DS18B20_Initialize:0000000000000000 $t
-     /tmp/ccTqHLFx.s:231    .text.DS18B20_Initialize:0000000000000000 DS18B20_Initialize
-     /tmp/ccTqHLFx.s:290    .text.DS18B20_Initialize:0000000000000040 $d
-     /tmp/ccTqHLFx.s:295    .text.DS18B20_Write_Byte:0000000000000000 $t
-     /tmp/ccTqHLFx.s:302    .text.DS18B20_Write_Byte:0000000000000000 DS18B20_Write_Byte
-     /tmp/ccTqHLFx.s:388    .text.DS18B20_Write_Byte:0000000000000054 $d
-     /tmp/ccTqHLFx.s:393    .text.DS18B20_Read_Byte:0000000000000000 $t
-     /tmp/ccTqHLFx.s:400    .text.DS18B20_Read_Byte:0000000000000000 DS18B20_Read_Byte
-     /tmp/ccTqHLFx.s:496    .text.DS18B20_Read_Byte:0000000000000054 $d
-     /tmp/ccTqHLFx.s:501    .text.DS18B20_Read_Temperature:0000000000000000 $t
-     /tmp/ccTqHLFx.s:508    .text.DS18B20_Read_Temperature:0000000000000000 DS18B20_Read_Temperature
-     /tmp/ccTqHLFx.s:599    .text.DS18B20_Read_Temperature:0000000000000068 $d
-     /tmp/ccTqHLFx.s:606    .text.DS18B20_Read_Temperature_NB:0000000000000000 $t
-     /tmp/ccTqHLFx.s:613    .text.DS18B20_Read_Temperature_NB:0000000000000000 DS18B20_Read_Temperature_NB
-     /tmp/ccTqHLFx.s:634    .text.DS18B20_Read_Temperature_NB:000000000000000e $d
-     /tmp/ccTqHLFx.s:638    .text.DS18B20_Read_Temperature_NB:0000000000000012 $t
-     /tmp/ccTqHLFx.s:742    .text.DS18B20_Read_Temperature_NB:0000000000000094 $d
-     /tmp/ccTqHLFx.s:755    .bss.DS18B20_state:0000000000000000 DS18B20_state
-     /tmp/ccTqHLFx.s:751    .bss.DS18B20_state:0000000000000000 $d
+     /tmp/ccnQlOiU.s:18     .text.micro_delay:0000000000000000 $t
+     /tmp/ccnQlOiU.s:25     .text.micro_delay:0000000000000000 micro_delay
+     /tmp/ccnQlOiU.s:52     .text.micro_delay:0000000000000010 $d
+     /tmp/ccnQlOiU.s:57     .text.Set_Pin_Output:0000000000000000 $t
+     /tmp/ccnQlOiU.s:63     .text.Set_Pin_Output:0000000000000000 Set_Pin_Output
+     /tmp/ccnQlOiU.s:110    .text.Set_Pin_Output_Defualt:0000000000000000 $t
+     /tmp/ccnQlOiU.s:116    .text.Set_Pin_Output_Defualt:0000000000000000 Set_Pin_Output_Defualt
+     /tmp/ccnQlOiU.s:137    .text.Set_Pin_Output_Defualt:000000000000000c $d
+     /tmp/ccnQlOiU.s:142    .text.Set_Pin_Input:0000000000000000 $t
+     /tmp/ccnQlOiU.s:148    .text.Set_Pin_Input:0000000000000000 Set_Pin_Input
+     /tmp/ccnQlOiU.s:192    .text.Set_Pin_Input_Defualt:0000000000000000 $t
+     /tmp/ccnQlOiU.s:198    .text.Set_Pin_Input_Defualt:0000000000000000 Set_Pin_Input_Defualt
+     /tmp/ccnQlOiU.s:219    .text.Set_Pin_Input_Defualt:000000000000000c $d
+     /tmp/ccnQlOiU.s:224    .text.DS18B20_Initialize:0000000000000000 $t
+     /tmp/ccnQlOiU.s:231    .text.DS18B20_Initialize:0000000000000000 DS18B20_Initialize
+     /tmp/ccnQlOiU.s:290    .text.DS18B20_Initialize:0000000000000040 $d
+     /tmp/ccnQlOiU.s:295    .text.Read_Temperature_Stage_0:0000000000000000 $t
+     /tmp/ccnQlOiU.s:301    .text.Read_Temperature_Stage_0:0000000000000000 Read_Temperature_Stage_0
+     /tmp/ccnQlOiU.s:329    .text.Read_Temperature_Stage_2:0000000000000000 $t
+     /tmp/ccnQlOiU.s:335    .text.Read_Temperature_Stage_2:0000000000000000 Read_Temperature_Stage_2
+     /tmp/ccnQlOiU.s:363    .text.DS18B20_Write_Byte:0000000000000000 $t
+     /tmp/ccnQlOiU.s:370    .text.DS18B20_Write_Byte:0000000000000000 DS18B20_Write_Byte
+     /tmp/ccnQlOiU.s:456    .text.DS18B20_Write_Byte:0000000000000054 $d
+     /tmp/ccnQlOiU.s:461    .text.Read_Temperature_Stage_1:0000000000000000 $t
+     /tmp/ccnQlOiU.s:467    .text.Read_Temperature_Stage_1:0000000000000000 Read_Temperature_Stage_1
+     /tmp/ccnQlOiU.s:492    .text.DS18B20_Read_Byte:0000000000000000 $t
+     /tmp/ccnQlOiU.s:499    .text.DS18B20_Read_Byte:0000000000000000 DS18B20_Read_Byte
+     /tmp/ccnQlOiU.s:595    .text.DS18B20_Read_Byte:0000000000000054 $d
+     /tmp/ccnQlOiU.s:600    .text.DS18B20_Read_Temperature:0000000000000000 $t
+     /tmp/ccnQlOiU.s:607    .text.DS18B20_Read_Temperature:0000000000000000 DS18B20_Read_Temperature
+     /tmp/ccnQlOiU.s:698    .text.DS18B20_Read_Temperature:0000000000000068 $d
+     /tmp/ccnQlOiU.s:705    .text.Read_Temperature_Stage_3:0000000000000000 $t
+     /tmp/ccnQlOiU.s:711    .text.Read_Temperature_Stage_3:0000000000000000 Read_Temperature_Stage_3
+     /tmp/ccnQlOiU.s:754    .text.Read_Temperature_Stage_3:0000000000000024 $d
+     /tmp/ccnQlOiU.s:759    .text.Read_Temperature_State_Machine_Controler:0000000000000000 $t
+     /tmp/ccnQlOiU.s:765    .text.Read_Temperature_State_Machine_Controler:0000000000000000 Read_Temperature_State_Machine_Controler
+     /tmp/ccnQlOiU.s:783    .text.Read_Temperature_State_Machine_Controler:000000000000000e $d
+     /tmp/ccnQlOiU.s:787    .text.Read_Temperature_State_Machine_Controler:0000000000000012 $t
+     /tmp/ccnQlOiU.s:910    .text.Read_Temperature_State_Machine_Controler:00000000000000a4 $d
+     /tmp/ccnQlOiU.s:916    .text.DS18B20_Read_Temperature_NB:0000000000000000 $t
+     /tmp/ccnQlOiU.s:923    .text.DS18B20_Read_Temperature_NB:0000000000000000 DS18B20_Read_Temperature_NB
+     /tmp/ccnQlOiU.s:959    .text.DS18B20_Read_Temperature_NB:0000000000000024 $d
+     /tmp/ccnQlOiU.s:966    .bss.DS18B20_state:0000000000000000 $d
+     /tmp/ccnQlOiU.s:970    .bss.DS18B20_state:0000000000000000 DS18B20_state
+     /tmp/ccnQlOiU.s:973    .bss.temperature:0000000000000000 $d
+     /tmp/ccnQlOiU.s:977    .bss.temperature:0000000000000000 temperature
 
 UNDEFINED SYMBOLS
 htim6
