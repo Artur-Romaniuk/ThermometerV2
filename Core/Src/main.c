@@ -95,39 +95,40 @@ int main(void)
   MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
-	Lcd_PortType ports[] = { LCD_D4_GPIO_Port, LCD_D5_GPIO_Port, LCD_D6_GPIO_Port, LCD_D7_GPIO_Port };
+  Lcd_PortType ports[] = {LCD_D4_GPIO_Port, LCD_D5_GPIO_Port, LCD_D6_GPIO_Port, LCD_D7_GPIO_Port};
 
-	Lcd_PinType pins[] = { LCD_D4_Pin, LCD_D5_Pin, LCD_D6_Pin, LCD_D7_Pin };
+  Lcd_PinType pins[] = {LCD_D4_Pin, LCD_D5_Pin, LCD_D6_Pin, LCD_D7_Pin};
 
-	Lcd_HandleTypeDef lcd = Lcd_create(ports, pins, LCD_RS_GPIO_Port, LCD_RS_Pin, LCD_E_GPIO_Port, LCD_E_Pin, LCD_4_BIT_MODE);
+  Lcd_HandleTypeDef lcd = Lcd_create(ports, pins, LCD_RS_GPIO_Port, LCD_RS_Pin, LCD_E_GPIO_Port, LCD_E_Pin, LCD_4_BIT_MODE);
 
-	Lcd_string(&lcd, "Temperature:");
+  Lcd_string(&lcd, "Temperature:");
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	HAL_TIM_Base_Start(&htim6);
-	HAL_TIM_Base_Start_IT(&htim7);
-	__HAL_TIM_CLEAR_FLAG(&htim7, TIM_FLAG_UPDATE);
-	while (1) {
-		float temperature=DS18B20_Read_Temperature();
-		if(temperature==0xffff)
-		{
-			Lcd_clear(&lcd);
-			Lcd_cursor(&lcd, 0, 0);
-			Lcd_string(&lcd, "TMP ERROR");
-		}else
-		{
-			Lcd_cursor(&lcd, 1, 0);
-			Lcd_float(&lcd, temperature);
-		}
+  HAL_TIM_Base_Start(&htim6);
+  HAL_TIM_Base_Start(&htim7);
+  while (1)
+  {
+    float temperature = DS18B20_Read_Temperature_NB();
+    if (temperature == 0xffff)
+    {
+      Lcd_clear(&lcd);
+      Lcd_cursor(&lcd, 0, 0);
+      Lcd_string(&lcd, "TMP ERROR");
+    }
+    else
+    {
+      Lcd_cursor(&lcd, 1, 0);
+      Lcd_float(&lcd, temperature);
+    }
 
-		HAL_Delay(2000);
+    //HAL_Delay(2000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	}
+  }
   /* USER CODE END 3 */
 }
 
@@ -148,7 +149,7 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE|RCC_OSCILLATORTYPE_LSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE | RCC_OSCILLATORTYPE_LSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.LSEState = RCC_LSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
@@ -164,8 +165,7 @@ void SystemClock_Config(void)
   }
   /** Initializes the CPU, AHB and APB buses clocks
   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
@@ -194,14 +194,15 @@ void SystemClock_Config(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-	/* User can add his own implementation to report the HAL error return state */
-	__disable_irq();
-	while (1) {
-	}
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+  }
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
