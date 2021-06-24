@@ -16,13 +16,13 @@ static int DS18B20_Initialize();
 static void micro_delay(uint16_t delay);
 static void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
 static void Set_Pin_Input(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
-static void Set_Pin_Output_Defualt();
-static void Set_Pin_Input_Defualt();
+static void Set_Pin_Output_Default();
+static void Set_Pin_Input_Default();
 static void Write_Byte(uint8_t byte);
 static uint8_t Read_Byte();
 
 //State machine for NB version
-static int Read_Temperature_State_Machine_Controler();
+static int Read_Temperature_State_Machine_Controller();
 static int Read_Temperature_Stage_0();
 static void Read_Temperature_Stage_1();
 static int Read_Temperature_Stage_2();
@@ -63,7 +63,7 @@ float DS18B20_Read_Temperature()
 
 float DS18B20_Read_Temperature_NB()
 {
-	if (Read_Temperature_State_Machine_Controler())
+	if (Read_Temperature_State_Machine_Controller())
 	{
 		return 0xffff; //ERROR
 	}
@@ -75,10 +75,10 @@ float DS18B20_Read_Temperature_NB()
 static int DS18B20_Initialize()
 {
 	uint8_t response;
-	Set_Pin_Output_Defualt();
+	Set_Pin_Output_Default();
 	HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
 	micro_delay(480); //datasheet
-	Set_Pin_Input_Defualt();
+	Set_Pin_Input_Default();
 	micro_delay(100); //datasheet
 	if (!HAL_GPIO_ReadPin(DS18B20_Port, DS18B20_Pin))
 	{
@@ -117,12 +117,12 @@ static void Set_Pin_Input(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
 	HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
 }
 
-static void Set_Pin_Output_Defualt()
+static void Set_Pin_Output_Default()
 {
 	Set_Pin_Output(DS18B20_Port, DS18B20_Pin);
 }
 
-static void Set_Pin_Input_Defualt()
+static void Set_Pin_Input_Default()
 {
 	Set_Pin_Input(DS18B20_Port, DS18B20_Pin);
 }
@@ -133,18 +133,18 @@ static void Write_Byte(uint8_t byte)
 	{
 		if ((byte & (1 << i)) != 0)
 		{
-			Set_Pin_Output_Defualt();
+			Set_Pin_Output_Default();
 			HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
 			micro_delay(1);
-			Set_Pin_Input_Defualt();
+			Set_Pin_Input_Default();
 			micro_delay(60);
 		}
 		else
 		{
-			Set_Pin_Output_Defualt();
+			Set_Pin_Output_Default();
 			HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
 			micro_delay(60);
-			Set_Pin_Input_Defualt();
+			Set_Pin_Input_Default();
 		}
 	}
 }
@@ -152,13 +152,13 @@ static void Write_Byte(uint8_t byte)
 static uint8_t Read_Byte()
 {
 	uint8_t byte = 0;
-	Set_Pin_Input_Defualt();
+	Set_Pin_Input_Default();
 	for (int i = 0; i < 8; i++)
 	{
-		Set_Pin_Output_Defualt();
+		Set_Pin_Output_Default();
 		HAL_GPIO_WritePin(DS18B20_Port, DS18B20_Pin, GPIO_PIN_RESET);
 		micro_delay(2);
-		Set_Pin_Input_Defualt();
+		Set_Pin_Input_Default();
 		micro_delay(10);
 		if (HAL_GPIO_ReadPin(DS18B20_Port, DS18B20_Pin))
 		{
@@ -170,7 +170,7 @@ static uint8_t Read_Byte()
 }
 
 //state machine static funtions///////
-static int Read_Temperature_State_Machine_Controler()
+static int Read_Temperature_State_Machine_Controller()
 {
 	switch (DS18B20_state)
 	{
